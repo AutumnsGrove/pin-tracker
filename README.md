@@ -2,8 +2,10 @@
 
 A Domino's Pizza Tracker-style app for tracking custom enamel pin orders through every stage of production. Built with SvelteKit and styled with a mountain landscape aesthetic.
 
-![SvelteKit](https://img.shields.io/badge/SvelteKit-4-orange?logo=svelte)
+![Svelte](https://img.shields.io/badge/Svelte-5-orange?logo=svelte)
+![SvelteKit](https://img.shields.io/badge/SvelteKit-2-red?logo=svelte)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-6-purple?logo=vite)
 
 ## Features
 
@@ -38,9 +40,10 @@ npm run preview
 
 ## Tech stack
 
-- **SvelteKit** — app framework
+- **Svelte 5** — component framework using runes (`$state`, `$derived`, `$props`)
+- **SvelteKit 2** — app framework
 - **TypeScript** — type safety
-- **Vite** — build tool
+- **Vite 6** — build tool
 - **CSS** — all styling is vanilla CSS (no Tailwind, no component library). The mountain scene is built with layered SVG paths and CSS gradients.
 - **Lexend** — Google Font used for typography
 

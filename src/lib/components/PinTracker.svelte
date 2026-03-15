@@ -1,23 +1,27 @@
 <script lang="ts">
 	import { orderStages } from './stages';
 
-	export let selectedOrder: {
-		id: string;
-		customerName: string;
-		pinDesign: string;
-		quantity: number;
-		status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
-		estimatedCompletion: string;
-		progress: number;
-		updates: {
-			status: string;
-			message: string;
-			timestamp: string;
-		}[];
-	};
+	interface Props {
+		selectedOrder: {
+			id: string;
+			customerName: string;
+			pinDesign: string;
+			quantity: number;
+			status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
+			estimatedCompletion: string;
+			progress: number;
+			updates: {
+				status: string;
+				message: string;
+				timestamp: string;
+			}[];
+		};
+	}
+
+	let { selectedOrder }: Props = $props();
 
 	const stages = orderStages;
-	$: currentStageIndex = stages.findIndex((s) => s.key === selectedOrder.status);
+	let currentStageIndex = $derived(stages.findIndex((s) => s.key === selectedOrder.status));
 
 	function getStageStatus(index: number): 'completed' | 'current' | 'upcoming' {
 		if (index < currentStageIndex) return 'completed';
@@ -25,16 +29,12 @@
 		return 'upcoming';
 	}
 
-	// Which stage checklist is expanded (null = none)
-	let expandedStage: number | null = null;
+	let expandedStage: number | null = $state(null);
 
 	function toggleStage(index: number) {
 		expandedStage = expandedStage === index ? null : index;
 	}
 
-	// For completed stages, all items are checked.
-	// For current stage, first 3 are checked (simulated progress).
-	// For upcoming, none are checked.
 	function isItemChecked(stageIndex: number, itemIndex: number): boolean {
 		const status = getStageStatus(stageIndex);
 		if (status === 'completed') return true;
@@ -50,7 +50,7 @@
 		truck: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 22 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>`
 	};
 
-	$: currentUpdate = selectedOrder.updates[selectedOrder.updates.length - 1];
+	let currentUpdate = $derived(selectedOrder.updates[selectedOrder.updates.length - 1]);
 </script>
 
 <!-- ===== HERO HORIZONTAL TRACKER ===== -->
@@ -64,7 +64,7 @@
 				class:current={status === 'current'}
 				class:upcoming={status === 'upcoming'}
 				class:expanded={expandedStage === index}
-				on:click={() => toggleStage(index)}
+				onclick={() => toggleStage(index)}
 			>
 				<div class="step-icon">
 					{@html icons[stage.iconKey]}
@@ -104,7 +104,7 @@
 				<h3>{stage.title}</h3>
 				<p>{stage.description}</p>
 			</div>
-			<button class="checklist-close" on:click={() => expandedStage = null}>
+			<button class="checklist-close" onclick={() => expandedStage = null}>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
 					<line x1="18" y1="6" x2="6" y2="18"></line>
 					<line x1="6" y1="6" x2="18" y2="18"></line>
@@ -193,275 +193,135 @@
 
 <style>
 	/* ===== HERO TRACKER BAR ===== */
-	.tracker-hero {
-		padding: 2.5rem 0.5rem 1.5rem;
-		animation: fadeIn 0.6s ease both;
-	}
-
-	.steps {
-		display: flex;
-		align-items: flex-start;
-		justify-content: center;
-		width: 100%;
-	}
-
+	.tracker-hero { padding: 2.5rem 0.5rem 1.5rem; animation: fadeIn 0.6s ease both; }
+	.steps { display: flex; align-items: flex-start; justify-content: center; width: 100%; }
 	.step {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.65rem;
-		flex-shrink: 0;
-		z-index: 2;
-		width: 100px;
-		cursor: pointer;
-		background: none;
-		border: none;
-		font-family: inherit;
-		padding: 0.5rem 0;
-		border-radius: var(--radius-sm);
-		transition: all 0.25s ease;
+		display: flex; flex-direction: column; align-items: center; gap: 0.65rem;
+		flex-shrink: 0; z-index: 2; width: 100px; cursor: pointer;
+		background: none; border: none; font-family: inherit;
+		padding: 0.5rem 0; border-radius: var(--radius-sm); transition: all 0.25s ease;
 	}
-
-	.step:hover {
-		background: rgba(255, 250, 245, 0.03);
-	}
-
-	.step.expanded {
-		background: rgba(232, 151, 107, 0.06);
-	}
-
+	.step:hover { background: rgba(255, 250, 245, 0.03); }
+	.step.expanded { background: rgba(232, 151, 107, 0.06); }
 	.step-icon {
-		position: relative;
-		width: 64px;
-		height: 64px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		position: relative; width: 64px; height: 64px; border-radius: 50%;
+		display: flex; align-items: center; justify-content: center;
 		transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 	}
-
-	.step.upcoming .step-icon {
-		background: rgba(255, 250, 245, 0.05);
-		border: 2px solid rgba(255, 250, 245, 0.1);
-	}
+	.step.upcoming .step-icon { background: rgba(255, 250, 245, 0.05); border: 2px solid rgba(255, 250, 245, 0.1); }
 	.step.upcoming .step-icon :global(svg) { width: 26px; height: 26px; color: rgba(255, 250, 245, 0.2); }
-
 	.step.current .step-icon {
 		background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--golden));
 		border: 2px solid var(--primary);
 		box-shadow: 0 0 0 6px rgba(232, 151, 107, 0.12), 0 0 30px rgba(232, 151, 107, 0.25), 0 0 60px rgba(232, 151, 107, 0.1);
 	}
 	.step.current .step-icon :global(svg) { width: 28px; height: 28px; color: white; }
-
 	.step.completed .step-icon {
-		background: var(--emerald);
-		border: 2px solid var(--emerald-light);
+		background: var(--emerald); border: 2px solid var(--emerald-light);
 		box-shadow: 0 0 20px rgba(95, 170, 123, 0.2);
 	}
 	.step.completed .step-icon :global(svg) { width: 26px; height: 26px; color: rgba(255, 255, 255, 0.4); }
-
 	.check-overlay {
-		position: absolute; inset: 0;
-		display: flex; align-items: center; justify-content: center;
+		position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
 		background: rgba(0, 0, 0, 0.15); border-radius: 50%;
 	}
-
 	.icon-pulse-ring {
 		position: absolute; inset: -8px; border-radius: 50%;
 		border: 2px solid var(--primary); opacity: 0;
 		animation: pulseRing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 	}
 	@keyframes pulseRing { 0% { transform: scale(0.85); opacity: 0.6; } 100% { transform: scale(1.15); opacity: 0; } }
-
-	.step-label {
-		font-size: 0.72rem; font-weight: 500; text-align: center; line-height: 1.3;
-		transition: color 0.3s ease; max-width: 90px;
-	}
+	.step-label { font-size: 0.72rem; font-weight: 500; text-align: center; line-height: 1.3; transition: color 0.3s ease; max-width: 90px; }
 	.step.upcoming .step-label { color: var(--slate-400); }
 	.step.current .step-label { color: var(--primary-light); font-weight: 600; }
 	.step.completed .step-label { color: var(--emerald-light); }
-
-	.step-tap-hint {
-		font-size: 0.55rem;
-		color: var(--slate-400);
-		opacity: 0;
-		transition: opacity 0.2s;
-		margin-top: -0.3rem;
-	}
+	.step-tap-hint { font-size: 0.55rem; color: var(--slate-400); opacity: 0; transition: opacity 0.2s; margin-top: -0.3rem; }
 	.step:hover .step-tap-hint { opacity: 0.7; }
 
 	/* ===== CONNECTOR BAR ===== */
 	.step-connector {
-		flex: 1; height: 4px;
-		background: rgba(255, 250, 245, 0.08);
+		flex: 1; height: 4px; background: rgba(255, 250, 245, 0.08);
 		border-radius: 100px; margin-top: calc(0.5rem + 30px);
 		position: relative; overflow: hidden; min-width: 20px;
 	}
 	.connector-fill {
-		position: absolute; inset: 0; border-radius: 100px;
-		transform-origin: left;
-		transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-		transform: scaleX(0);
+		position: absolute; inset: 0; border-radius: 100px; transform-origin: left;
+		transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); transform: scaleX(0);
 	}
-	.step-connector.filled .connector-fill {
-		background: var(--emerald); box-shadow: 0 0 10px rgba(95, 170, 123, 0.3); transform: scaleX(1);
-	}
+	.step-connector.filled .connector-fill { background: var(--emerald); box-shadow: 0 0 10px rgba(95, 170, 123, 0.3); transform: scaleX(1); }
 	.step-connector.filling .connector-fill {
 		background: linear-gradient(90deg, var(--emerald), var(--primary));
-		box-shadow: 0 0 10px rgba(232, 151, 107, 0.2);
-		transform: scaleX(0.5); animation: fillPulse 2s ease-in-out infinite;
+		box-shadow: 0 0 10px rgba(232, 151, 107, 0.2); transform: scaleX(0.5);
+		animation: fillPulse 2s ease-in-out infinite;
 	}
 	@keyframes fillPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
 
 	/* ===== CHECKLIST PANEL ===== */
 	.checklist-panel {
-		background: rgba(255, 250, 245, 0.04);
-		border: 1px solid rgba(255, 250, 245, 0.08);
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		margin: 0 0 1rem;
+		background: rgba(255, 250, 245, 0.04); border: 1px solid rgba(255, 250, 245, 0.08);
+		border-radius: var(--radius); padding: 1.5rem; margin: 0 0 1rem;
 		animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
 	}
-
-	@keyframes slideDown {
-		from { opacity: 0; transform: translateY(-10px); max-height: 0; }
-		to { opacity: 1; transform: translateY(0); max-height: 500px; }
-	}
-
-	.checklist-header {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1.25rem;
-	}
-
+	@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+	.checklist-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
 	.checklist-icon {
-		width: 40px; height: 40px; border-radius: 10px;
-		display: flex; align-items: center; justify-content: center;
-		background: rgba(255, 250, 245, 0.06);
-		flex-shrink: 0;
+		width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+		background: rgba(255, 250, 245, 0.06); flex-shrink: 0;
 	}
 	.checklist-icon :global(svg) { width: 20px; height: 20px; color: var(--slate-500); }
 	.checklist-icon.completed { background: rgba(95, 170, 123, 0.12); }
 	.checklist-icon.completed :global(svg) { color: var(--emerald-light); }
 	.checklist-icon.current { background: rgba(232, 151, 107, 0.12); }
 	.checklist-icon.current :global(svg) { color: var(--primary-light); }
-
-	.checklist-title-block {
-		flex: 1; min-width: 0;
-	}
-	.checklist-title-block h3 {
-		font-size: 1.05rem; font-weight: 600; color: var(--slate-700); margin-bottom: 0.1rem;
-	}
-	.checklist-title-block p {
-		font-size: 0.8rem; color: var(--slate-400); font-weight: 300;
-	}
-
+	.checklist-title-block { flex: 1; min-width: 0; }
+	.checklist-title-block h3 { font-size: 1.05rem; font-weight: 600; color: var(--slate-700); margin-bottom: 0.1rem; }
+	.checklist-title-block p { font-size: 0.8rem; color: var(--slate-400); font-weight: 300; }
 	.checklist-close {
-		background: none; border: none; cursor: pointer;
-		color: var(--slate-400); padding: 0.25rem;
-		border-radius: 6px; transition: all 0.2s;
+		background: none; border: none; cursor: pointer; color: var(--slate-400);
+		padding: 0.25rem; border-radius: 6px; transition: all 0.2s;
 		display: flex; align-items: center; justify-content: center;
 	}
-	.checklist-close:hover {
-		color: var(--slate-600); background: rgba(255, 250, 245, 0.06);
-	}
-
-	.checklist-items {
-		display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem;
-	}
-
+	.checklist-close:hover { color: var(--slate-600); background: rgba(255, 250, 245, 0.06); }
+	.checklist-items { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
 	.checklist-item {
-		display: flex; align-items: center; gap: 0.75rem;
-		padding: 0.6rem 0.75rem;
-		border-radius: var(--radius-xs);
-		transition: all 0.2s ease;
-		animation: fadeIn 0.3s ease both;
+		display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem;
+		border-radius: var(--radius-xs); transition: all 0.2s ease; animation: fadeIn 0.3s ease both;
 	}
-
-	.checklist-item:hover {
-		background: rgba(255, 250, 245, 0.03);
-	}
-
+	.checklist-item:hover { background: rgba(255, 250, 245, 0.03); }
 	.check-box {
-		width: 22px; height: 22px; border-radius: 6px;
-		border: 2px solid rgba(255, 250, 245, 0.15);
-		display: flex; align-items: center; justify-content: center;
-		flex-shrink: 0; transition: all 0.25s ease;
+		width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255, 250, 245, 0.15);
+		display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.25s ease;
 	}
-
-	.check-box.checked {
-		background: var(--emerald);
-		border-color: var(--emerald-light);
-		box-shadow: 0 0 8px rgba(95, 170, 123, 0.25);
-	}
+	.check-box.checked { background: var(--emerald); border-color: var(--emerald-light); box-shadow: 0 0 8px rgba(95, 170, 123, 0.25); }
 	.check-box.checked svg { color: white; }
-
-	.check-text {
-		font-size: 0.88rem; color: var(--slate-500); font-weight: 400;
-		transition: all 0.2s;
-	}
-
-	.checklist-item.checked .check-text {
-		color: var(--slate-600);
-	}
-
+	.check-text { font-size: 0.88rem; color: var(--slate-500); font-weight: 400; transition: all 0.2s; }
+	.checklist-item.checked .check-text { color: var(--slate-600); }
 	.checklist-progress {
-		display: flex; align-items: center; gap: 0.75rem;
-		padding-top: 0.75rem;
+		display: flex; align-items: center; gap: 0.75rem; padding-top: 0.75rem;
 		border-top: 1px solid rgba(255, 250, 245, 0.05);
 	}
-
-	.checklist-bar {
-		flex: 1; height: 4px;
-		background: rgba(255, 250, 245, 0.08);
-		border-radius: 100px; overflow: hidden;
-	}
-
-	.checklist-fill {
-		height: 100%;
-		background: linear-gradient(90deg, var(--emerald), var(--emerald-light));
-		border-radius: 100px;
-		transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	.checklist-count {
-		font-size: 0.75rem; color: var(--slate-400); font-weight: 500; white-space: nowrap;
-	}
+	.checklist-bar { flex: 1; height: 4px; background: rgba(255, 250, 245, 0.08); border-radius: 100px; overflow: hidden; }
+	.checklist-fill { height: 100%; background: linear-gradient(90deg, var(--emerald), var(--emerald-light)); border-radius: 100px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+	.checklist-count { font-size: 0.75rem; color: var(--slate-400); font-weight: 500; white-space: nowrap; }
 
 	/* ===== STATUS BANNER ===== */
 	.status-banner {
-		position: relative; text-align: center;
-		padding: 1.75rem 2rem; margin: 0.5rem 0 1.75rem;
-		background: rgba(255, 250, 245, 0.03);
-		border: 1px solid rgba(255, 250, 245, 0.05);
-		border-radius: var(--radius); overflow: hidden;
-		animation: fadeIn 0.5s ease 0.15s both;
+		position: relative; text-align: center; padding: 1.75rem 2rem; margin: 0.5rem 0 1.75rem;
+		background: rgba(255, 250, 245, 0.03); border: 1px solid rgba(255, 250, 245, 0.05);
+		border-radius: var(--radius); overflow: hidden; animation: fadeIn 0.5s ease 0.15s both;
 	}
-	.status-glow {
-		position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-		width: 200px; height: 2px;
-		background: linear-gradient(90deg, transparent, var(--primary), transparent);
-	}
+	.status-glow { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 200px; height: 2px; background: linear-gradient(90deg, transparent, var(--primary), transparent); }
 	.status-content { position: relative; z-index: 1; }
 	.status-title { font-size: 1.3rem; font-weight: 700; color: var(--slate-800); margin-bottom: 0.3rem; letter-spacing: -0.02em; }
 	.status-message { font-size: 0.9rem; color: var(--slate-500); font-weight: 300; margin-bottom: 0.4rem; line-height: 1.5; }
 	.status-time { font-size: 0.72rem; color: var(--slate-400); font-weight: 400; }
 
 	/* ===== INFO CARDS ===== */
-	.info-row {
-		display: grid; grid-template-columns: repeat(4, 1fr);
-		gap: 0.75rem; margin-bottom: 1.75rem;
-		animation: fadeIn 0.5s ease 0.25s both;
-	}
+	.info-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.75rem; animation: fadeIn 0.5s ease 0.25s both; }
 	.info-card {
-		background: rgba(255, 250, 245, 0.04);
-		border: 1px solid rgba(255, 250, 245, 0.06);
-		border-radius: var(--radius-sm);
-		padding: 0.85rem 1rem;
-		display: flex; flex-direction: column; gap: 0.25rem;
-		transition: all 0.2s ease;
+		background: rgba(255, 250, 245, 0.04); border: 1px solid rgba(255, 250, 245, 0.06);
+		border-radius: var(--radius-sm); padding: 0.85rem 1rem;
+		display: flex; flex-direction: column; gap: 0.25rem; transition: all 0.2s ease;
 	}
 	.info-card:hover { background: rgba(255, 250, 245, 0.06); border-color: rgba(255, 250, 245, 0.08); }
 	.info-label { font-size: 0.6rem; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }

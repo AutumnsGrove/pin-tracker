@@ -16,7 +16,7 @@
 		}[];
 	}
 
-	let orders: Order[] = [
+	let orders: Order[] = $state([
 		{
 			id: 'PIN-2024-001',
 			customerName: 'Sarah Johnson',
@@ -87,9 +87,9 @@
 				{ status: 'Order Placed', message: 'Your order has been received and is in the queue.', timestamp: '2024-03-17 8:30 AM' }
 			]
 		}
-	];
+	]);
 
-	let selectedOrder: Order = orders[0];
+	let selectedOrder: Order = $state(orders[0]);
 
 	function selectOrder(order: Order) {
 		selectedOrder = order;
@@ -148,7 +148,6 @@
 </div>
 
 <div class="container">
-	<!-- Header -->
 	<header>
 		<div class="header-badge">PIN PRODUCTION TRACKER</div>
 		<h1>Pin Tracker</h1>
@@ -160,7 +159,7 @@
 			<button
 				class="order-tab"
 				class:active={selectedOrder.id === order.id}
-				on:click={() => selectOrder(order)}
+				onclick={() => selectOrder(order)}
 			>
 				<span class="tab-design">{order.pinDesign}</span>
 				<span class="tab-id">{order.id}</span>
@@ -171,7 +170,7 @@
 				</span>
 			</button>
 		{/each}
-		<button class="order-tab new-tab" on:click={createNewOrder}>
+		<button class="order-tab new-tab" onclick={createNewOrder}>
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
 				<line x1="12" y1="5" x2="12" y2="19"></line>
 				<line x1="5" y1="12" x2="19" y2="12"></line>
@@ -189,7 +188,7 @@
 </div>
 
 <style>
-	/* ===== SCENE (same mountain background) ===== */
+	/* ===== SCENE ===== */
 	.scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
 	.sky {
 		position: absolute; inset: 0;
@@ -206,155 +205,64 @@
 	.fog-2 { bottom: 15%; height: 100px; background: linear-gradient(90deg, transparent 20%, rgba(200,190,180,0.05) 40%, rgba(200,190,180,0.08) 60%, rgba(200,190,180,0.03) 80%, transparent 95%); animation: driftSlow 35s ease-in-out infinite; }
 
 	/* ===== HEADER ===== */
-	header {
-		text-align: center;
-		margin-bottom: 1.5rem;
-		animation: fadeIn 0.8s ease both;
-	}
-
+	header { text-align: center; margin-bottom: 1.5rem; animation: fadeIn 0.8s ease both; }
 	.header-badge {
-		display: inline-block;
-		padding: 0.3rem 1rem;
-		background: rgba(232, 151, 107, 0.12);
-		border: 1px solid rgba(232, 151, 107, 0.2);
-		color: var(--primary-light);
-		border-radius: 100px;
-		font-size: 0.6rem;
-		font-weight: 600;
-		letter-spacing: 0.18em;
-		margin-bottom: 0.6rem;
-		backdrop-filter: blur(8px);
+		display: inline-block; padding: 0.3rem 1rem;
+		background: rgba(232, 151, 107, 0.12); border: 1px solid rgba(232, 151, 107, 0.2);
+		color: var(--primary-light); border-radius: 100px;
+		font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em;
+		margin-bottom: 0.6rem; backdrop-filter: blur(8px);
 	}
-
 	header h1 {
 		font-size: 2.8rem;
 		background: linear-gradient(135deg, var(--sun-glow) 0%, var(--golden) 30%, var(--primary) 60%, var(--sunset-rose) 100%);
 		background-size: 200% auto;
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		-webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 		animation: shimmer 8s linear infinite;
 	}
 
 	/* ===== ORDER TABS ===== */
 	.order-tabs {
-		display: flex;
-		gap: 0.4rem;
-		overflow-x: auto;
-		padding: 0.25rem;
-		margin-bottom: 1.25rem;
-		animation: fadeIn 0.6s ease 0.1s both;
-		scrollbar-width: none;
+		display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.25rem;
+		margin-bottom: 1.25rem; animation: fadeIn 0.6s ease 0.1s both; scrollbar-width: none;
 	}
-
 	.order-tabs::-webkit-scrollbar { display: none; }
-
 	.order-tab {
-		flex-shrink: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.2rem;
-		padding: 0.65rem 1rem;
-		background: var(--glass-bg);
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
-		border: 1px solid var(--glass-border);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-		font-family: inherit;
-		color: var(--slate-500);
-		min-width: 140px;
+		flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start;
+		gap: 0.2rem; padding: 0.65rem 1rem;
+		background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+		border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+		cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+		font-family: inherit; color: var(--slate-500); min-width: 140px;
 	}
-
-	.order-tab:hover {
-		background: rgba(12, 14, 25, 0.65);
-		border-color: var(--glass-border-light);
-	}
-
+	.order-tab:hover { background: rgba(12, 14, 25, 0.65); border-color: var(--glass-border-light); }
 	.order-tab.active {
-		border-color: rgba(232, 151, 107, 0.35);
-		background: rgba(232, 151, 107, 0.1);
+		border-color: rgba(232, 151, 107, 0.35); background: rgba(232, 151, 107, 0.1);
 		box-shadow: 0 0 20px rgba(232, 151, 107, 0.08);
 	}
-
-	.order-tab.active .tab-design {
-		color: var(--slate-800);
-	}
-
-	.tab-design {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--slate-600);
-		transition: color 0.2s;
-	}
-
-	.tab-id {
-		font-size: 0.65rem;
-		font-family: 'SF Mono', 'Fira Code', monospace;
-		color: var(--slate-400);
-	}
-
-	.tab-progress {
-		width: 100%;
-		margin-top: 0.15rem;
-	}
-
-	.tab-bar {
-		display: block;
-		width: 100%;
-		height: 3px;
-		background: rgba(255, 250, 245, 0.08);
-		border-radius: 100px;
-		overflow: hidden;
-	}
-
-	.tab-fill {
-		display: block;
-		height: 100%;
-		background: linear-gradient(90deg, var(--primary-dark), var(--primary));
-		border-radius: 100px;
-		transition: width 0.4s ease;
-	}
-
-	.order-tab.active .tab-fill {
-		background: linear-gradient(90deg, var(--primary), var(--golden));
-	}
-
+	.order-tab.active .tab-design { color: var(--slate-800); }
+	.tab-design { font-size: 0.85rem; font-weight: 600; color: var(--slate-600); transition: color 0.2s; }
+	.tab-id { font-size: 0.65rem; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--slate-400); }
+	.tab-progress { width: 100%; margin-top: 0.15rem; }
+	.tab-bar { display: block; width: 100%; height: 3px; background: rgba(255, 250, 245, 0.08); border-radius: 100px; overflow: hidden; }
+	.tab-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--primary-dark), var(--primary)); border-radius: 100px; transition: width 0.4s ease; }
+	.order-tab.active .tab-fill { background: linear-gradient(90deg, var(--primary), var(--golden)); }
 	.new-tab {
-		align-items: center;
-		justify-content: center;
-		flex-direction: row;
-		gap: 0.4rem;
-		min-width: 90px;
-		color: var(--primary-light);
-		border-style: dashed;
+		align-items: center; justify-content: center; flex-direction: row; gap: 0.4rem;
+		min-width: 90px; color: var(--primary-light); border-style: dashed;
 	}
-
-	.new-tab:hover {
-		background: rgba(232, 151, 107, 0.08);
-		border-color: rgba(232, 151, 107, 0.25);
-	}
+	.new-tab:hover { background: rgba(232, 151, 107, 0.08); border-color: rgba(232, 151, 107, 0.25); }
 
 	/* ===== TRACKER PANEL ===== */
 	.tracker-panel {
-		background: var(--glass-bg-solid);
-		backdrop-filter: blur(24px);
-		-webkit-backdrop-filter: blur(24px);
-		border: 1px solid var(--glass-border);
-		border-radius: calc(var(--radius) + 4px);
-		padding: 1rem 2.5rem 2.5rem;
-		box-shadow: var(--glass-shadow), var(--glass-glow);
+		background: var(--glass-bg-solid); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+		border: 1px solid var(--glass-border); border-radius: calc(var(--radius) + 4px);
+		padding: 1rem 2.5rem 2.5rem; box-shadow: var(--glass-shadow), var(--glass-glow);
 		animation: fadeIn 0.6s ease 0.2s both;
 	}
 
 	@media (max-width: 900px) {
-		.order-tabs {
-			flex-wrap: nowrap;
-		}
-		.tracker-panel {
-			padding: 1rem 1.25rem 2rem;
-		}
+		.order-tabs { flex-wrap: nowrap; }
+		.tracker-panel { padding: 1rem 1.25rem 2rem; }
 	}
 </style>
