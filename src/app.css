@@ -1,0 +1,159 @@
+@keyframes fadeIn {
+	from { opacity: 0; transform: translateY(16px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInSlow {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes shimmer {
+	0% { background-position: -200% 0; }
+	100% { background-position: 200% 0; }
+}
+
+@keyframes drift {
+	0%, 100% { transform: translateX(0); }
+	50% { transform: translateX(30px); }
+}
+
+@keyframes driftSlow {
+	0%, 100% { transform: translateX(0) scaleY(1); }
+	50% { transform: translateX(-20px) scaleY(1.05); }
+}
+
+@keyframes sunPulse {
+	0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+	50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+:root {
+	/* Mountain palette */
+	--sky-top: #0b0d1a;
+	--sky-mid: #1b1e3d;
+	--twilight: #3d2b5a;
+	--sunset-purple: #6b3a6b;
+	--sunset-rose: #c25b6a;
+	--golden: #e8976b;
+	--horizon: #f5c26b;
+	--sun-glow: #ffe4a0;
+
+	/* Mountain layers */
+	--peak-far: #1e2240;
+	--peak-mid: #171a30;
+	--peak-near: #0e1020;
+	--peak-front: #090b14;
+
+	/* Mist */
+	--mist: rgba(200, 190, 180, 0.08);
+	--mist-thick: rgba(220, 210, 195, 0.12);
+
+	/* UI colors - warm alpine */
+	--primary: #e8976b;
+	--primary-light: #f0b088;
+	--primary-dark: #c47a52;
+	--accent: #6bb8c4;
+	--accent-light: #88d0d8;
+	--emerald: #5faa7b;
+	--emerald-light: #7cc49a;
+	--amber: #e5b65a;
+	--violet: #9b7ac4;
+	--rose: #c4626a;
+
+	/* Neutrals - warm tinted */
+	--slate-50: rgba(255, 250, 245, 0.06);
+	--slate-100: rgba(255, 250, 245, 0.1);
+	--slate-200: rgba(255, 250, 245, 0.14);
+	--slate-300: rgba(255, 250, 245, 0.25);
+	--slate-400: rgba(255, 250, 245, 0.45);
+	--slate-500: rgba(255, 250, 245, 0.6);
+	--slate-600: rgba(255, 250, 245, 0.72);
+	--slate-700: rgba(255, 250, 245, 0.85);
+	--slate-800: rgba(255, 252, 248, 0.95);
+
+	/* Glass */
+	--glass-bg: rgba(12, 14, 25, 0.55);
+	--glass-bg-solid: rgba(14, 16, 30, 0.75);
+	--glass-border: rgba(255, 250, 245, 0.08);
+	--glass-border-light: rgba(255, 250, 245, 0.12);
+	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+	--glass-glow: 0 0 60px rgba(232, 151, 107, 0.06);
+
+	/* Radii */
+	--radius: 16px;
+	--radius-sm: 10px;
+	--radius-xs: 6px;
+
+	/* Legacy compat */
+	--primary-color: var(--primary);
+	--accent-color: var(--accent);
+	--dark-color: var(--slate-800);
+	--light-color: var(--slate-100);
+	--success-color: var(--emerald);
+	--warning-color: var(--amber);
+	--danger-color: var(--rose);
+	--secondary-color: var(--primary-light);
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html {
+	height: 100%;
+}
+
+body {
+	font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	min-height: 100vh;
+	color: var(--slate-800);
+	-webkit-font-smoothing: antialiased;
+	overflow-x: hidden;
+	background: var(--sky-top);
+}
+
+.container {
+	position: relative;
+	z-index: 10;
+	max-width: 1320px;
+	margin: 0 auto;
+	padding: 2rem 2.5rem;
+}
+
+h1, h2, h3 {
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	vertical-align: middle;
+}
+
+.icon :global(svg) {
+	width: 100%;
+	height: 100%;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+	width: 6px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(255, 250, 245, 0.15);
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 250, 245, 0.25);
+}
