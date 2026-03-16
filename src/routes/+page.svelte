@@ -1,5 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import PinTracker from '$lib/components/PinTracker.svelte';
+	import { theme } from '$lib/stores/theme';
+	import type { Theme } from '$lib/stores/theme';
+
+	let currentTheme = $state<Theme>('mountain');
+
+	onMount(() => {
+		theme.init();
+		const unsubscribe = theme.subscribe(t => currentTheme = t);
+		return unsubscribe;
+	});
 
 	interface Order {
 		id: string;
@@ -113,39 +124,50 @@
 	}
 </script>
 
-<!-- Mountain landscape background scene -->
-<div class="scene" aria-hidden="true">
-	<div class="sky"></div>
-	<div class="stars">
-		{#each Array(60) as _, i}
-			<div
-				class="star"
-				style="left: {Math.random() * 100}%; top: {Math.random() * 40}%; width: {1 + Math.random() * 2}px; height: {1 + Math.random() * 2}px; opacity: {0.2 + Math.random() * 0.6}; animation-delay: {Math.random() * 4}s;"
-			></div>
-		{/each}
+<!-- Mountain landscape background scene - only shown for mountain theme -->
+{#if currentTheme === 'mountain'}
+	<div class="scene" aria-hidden="true">
+		<div class="sky"></div>
+		<div class="stars">
+			{#each Array(60) as _, i}
+				<div
+					class="star"
+					style="left: {Math.random() * 100}%; top: {Math.random() * 40}%; width: {1 + Math.random() * 2}px; height: {1 + Math.random() * 2}px; opacity: {0.2 + Math.random() * 0.6}; animation-delay: {Math.random() * 4}s;"
+				></div>
+			{/each}
+		</div>
+		<div class="sun-glow"></div>
+		<div class="sun-glow-inner"></div>
+		<svg class="mountains" viewBox="0 0 1440 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M0 380 L80 320 L160 350 L240 280 L320 310 L400 260 L480 290 L560 240 L640 270 L720 220 L800 250 L880 200 L960 230 L1040 190 L1120 220 L1200 250 L1280 210 L1360 240 L1440 280 L1440 600 L0 600Z" fill="#1e2240" opacity="0.5"/>
+			<rect x="0" y="340" width="1440" height="40" fill="url(#fog1)" opacity="0.15"/>
+			<path d="M0 420 L100 370 L180 390 L280 330 L380 360 L460 310 L540 340 L640 290 L720 320 L820 270 L900 300 L1000 260 L1080 290 L1160 250 L1260 280 L1340 300 L1440 340 L1440 600 L0 600Z" fill="#171a30" opacity="0.7"/>
+			<rect x="0" y="380" width="1440" height="50" fill="url(#fog2)" opacity="0.12"/>
+			<path d="M0 460 L60 430 L140 450 L220 390 L320 420 L400 370 L500 400 L580 360 L680 390 L760 350 L860 380 L940 340 L1040 370 L1120 330 L1220 360 L1300 380 L1440 400 L1440 600 L0 600Z" fill="#131630" opacity="0.85"/>
+			<rect x="0" y="420" width="1440" height="60" fill="url(#fog3)" opacity="0.1"/>
+			<path d="M0 500 L80 470 L180 490 L260 440 L360 460 L440 420 L540 450 L640 410 L740 440 L840 400 L940 430 L1020 390 L1120 420 L1200 440 L1300 410 L1380 430 L1440 450 L1440 600 L0 600Z" fill="#0e1020" opacity="0.92"/>
+			<path d="M0 560 L120 530 L240 550 L360 520 L480 540 L600 510 L720 530 L840 500 L960 520 L1080 540 L1200 510 L1320 530 L1440 520 L1440 600 L0 600Z" fill="#090b14"/>
+			<rect x="0" y="520" width="1440" height="80" fill="url(#valleyMist)" opacity="0.08"/>
+			<defs>
+				<linearGradient id="fog1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="transparent"/><stop offset="20%" stop-color="#c8beb4" stop-opacity="0.5"/><stop offset="50%" stop-color="#c8beb4" stop-opacity="0.8"/><stop offset="80%" stop-color="#c8beb4" stop-opacity="0.4"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+				<linearGradient id="fog2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="transparent"/><stop offset="30%" stop-color="#d4ccc0" stop-opacity="0.6"/><stop offset="60%" stop-color="#d4ccc0" stop-opacity="0.9"/><stop offset="85%" stop-color="#d4ccc0" stop-opacity="0.3"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+				<linearGradient id="fog3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="transparent"/><stop offset="15%" stop-color="#e0d6c8" stop-opacity="0.4"/><stop offset="45%" stop-color="#e0d6c8" stop-opacity="1"/><stop offset="70%" stop-color="#e0d6c8" stop-opacity="0.6"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+				<linearGradient id="valleyMist" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8beb4" stop-opacity="1"/><stop offset="100%" stop-color="#c8beb4" stop-opacity="0"/></linearGradient>
+			</defs>
+		</svg>
+		<div class="fog-layer fog-1"></div>
+		<div class="fog-layer fog-2"></div>
 	</div>
-	<div class="sun-glow"></div>
-	<div class="sun-glow-inner"></div>
-	<svg class="mountains" viewBox="0 0 1440 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-		<path d="M0 380 L80 320 L160 350 L240 280 L320 310 L400 260 L480 290 L560 240 L640 270 L720 220 L800 250 L880 200 L960 230 L1040 190 L1120 220 L1200 250 L1280 210 L1360 240 L1440 280 L1440 600 L0 600Z" fill="#1e2240" opacity="0.5"/>
-		<rect x="0" y="340" width="1440" height="40" fill="url(#fog1)" opacity="0.15"/>
-		<path d="M0 420 L100 370 L180 390 L280 330 L380 360 L460 310 L540 340 L640 290 L720 320 L820 270 L900 300 L1000 260 L1080 290 L1160 250 L1260 280 L1340 300 L1440 340 L1440 600 L0 600Z" fill="#171a30" opacity="0.7"/>
-		<rect x="0" y="380" width="1440" height="50" fill="url(#fog2)" opacity="0.12"/>
-		<path d="M0 460 L60 430 L140 450 L220 390 L320 420 L400 370 L500 400 L580 360 L680 390 L760 350 L860 380 L940 340 L1040 370 L1120 330 L1220 360 L1300 380 L1440 400 L1440 600 L0 600Z" fill="#131630" opacity="0.85"/>
-		<rect x="0" y="420" width="1440" height="60" fill="url(#fog3)" opacity="0.1"/>
-		<path d="M0 500 L80 470 L180 490 L260 440 L360 460 L440 420 L540 450 L640 410 L740 440 L840 400 L940 430 L1020 390 L1120 420 L1200 440 L1300 410 L1380 430 L1440 450 L1440 600 L0 600Z" fill="#0e1020" opacity="0.92"/>
-		<path d="M0 560 L120 530 L240 550 L360 520 L480 540 L600 510 L720 530 L840 500 L960 520 L1080 540 L1200 510 L1320 530 L1440 520 L1440 600 L0 600Z" fill="#090b14"/>
-		<rect x="0" y="520" width="1440" height="80" fill="url(#valleyMist)" opacity="0.08"/>
-		<defs>
-			<linearGradient id="fog1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="transparent"/><stop offset="20%" stop-color="#c8beb4" stop-opacity="0.5"/><stop offset="50%" stop-color="#c8beb4" stop-opacity="0.8"/><stop offset="80%" stop-color="#c8beb4" stop-opacity="0.4"/><stop offset="100%" stop-color="transparent"/></linearGradient>
-			<linearGradient id="fog2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="transparent"/><stop offset="30%" stop-color="#d4ccc0" stop-opacity="0.6"/><stop offset="60%" stop-color="#d4ccc0" stop-opacity="0.9"/><stop offset="85%" stop-color="#d4ccc0" stop-opacity="0.3"/><stop offset="100%" stop-color="transparent"/></linearGradient>
-			<linearGradient id="fog3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="transparent"/><stop offset="15%" stop-color="#e0d6c8" stop-opacity="0.4"/><stop offset="45%" stop-color="#e0d6c8" stop-opacity="1"/><stop offset="70%" stop-color="#e0d6c8" stop-opacity="0.6"/><stop offset="100%" stop-color="transparent"/></linearGradient>
-			<linearGradient id="valleyMist" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8beb4" stop-opacity="1"/><stop offset="100%" stop-color="#c8beb4" stop-opacity="0"/></linearGradient>
-		</defs>
-	</svg>
-	<div class="fog-layer fog-1"></div>
-	<div class="fog-layer fog-2"></div>
-</div>
+{/if}
+
+<!-- Light/Dark theme backgrounds -->
+{#if currentTheme === 'light'}
+	<div class="light-bg" aria-hidden="true"></div>
+{/if}
+
+{#if currentTheme === 'dark'}
+	<div class="dark-bg" aria-hidden="true"></div>
+{/if}
 
 <div class="container">
 	<header>
@@ -188,6 +210,22 @@
 </div>
 
 <style>
+	/* ===== LIGHT THEME BACKGROUND ===== */
+	.light-bg {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+	}
+
+	/* ===== DARK THEME BACKGROUND ===== */
+	.dark-bg {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+	}
+
 	/* ===== SCENE ===== */
 	.scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
 	.sky {
@@ -233,16 +271,16 @@
 		background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
 		border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
 		cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-		font-family: inherit; color: var(--slate-500); min-width: 140px;
+		font-family: inherit; color: var(--text-muted); min-width: 140px;
 	}
-	.order-tab:hover { background: rgba(12, 14, 25, 0.65); border-color: var(--glass-border-light); }
+	.order-tab:hover { background: var(--glass-bg-solid); border-color: var(--glass-border-light); }
 	.order-tab.active {
 		border-color: rgba(232, 151, 107, 0.35); background: rgba(232, 151, 107, 0.1);
 		box-shadow: 0 0 20px rgba(232, 151, 107, 0.08);
 	}
-	.order-tab.active .tab-design { color: var(--slate-800); }
-	.tab-design { font-size: 0.85rem; font-weight: 600; color: var(--slate-600); transition: color 0.2s; }
-	.tab-id { font-size: 0.65rem; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--slate-400); }
+	.order-tab.active .tab-design { color: var(--text-primary); }
+	.tab-design { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); transition: color 0.2s; }
+	.tab-id { font-size: 0.65rem; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--text-muted); }
 	.tab-progress { width: 100%; margin-top: 0.15rem; }
 	.tab-bar { display: block; width: 100%; height: 3px; background: rgba(255, 250, 245, 0.08); border-radius: 100px; overflow: hidden; }
 	.tab-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--primary-dark), var(--primary)); border-radius: 100px; transition: width 0.4s ease; }

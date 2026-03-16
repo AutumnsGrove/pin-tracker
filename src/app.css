@@ -28,7 +28,9 @@
 	50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
 }
 
-:root {
+/* ===== DEFAULT MOUNTAIN THEME ===== */
+:root,
+[data-theme="mountain"] {
 	/* Mountain palette */
 	--sky-top: #0b0d1a;
 	--sky-mid: #1b1e3d;
@@ -80,12 +82,173 @@
 	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 	--glass-glow: 0 0 60px rgba(232, 151, 107, 0.06);
 
+	/* Background */
+	--bg-primary: #0b0d1a;
+	--bg-secondary: #121530;
+	--bg-card: rgba(14, 16, 30, 0.75);
+	
+	/* Text */
+	--text-primary: rgba(255, 252, 248, 0.95);
+	--text-secondary: rgba(255, 250, 245, 0.72);
+	--text-muted: rgba(255, 250, 245, 0.45);
+	
+	/* Scrollbar */
+	--scrollbar-thumb: rgba(255, 250, 245, 0.15);
+	--scrollbar-thumb-hover: rgba(255, 250, 245, 0.25);
+
 	/* Radii */
 	--radius: 16px;
 	--radius-sm: 10px;
 	--radius-xs: 6px;
 
-	/* Legacy compat */
+	/* Theme icon */
+	--theme-icon: 🌄;
+}
+
+/* ===== LIGHT THEME ===== */
+[data-theme="light"] {
+	/* Sky - bright day */
+	--sky-top: #87ceeb;
+	--sky-mid: #b0e0e6;
+	--twilight: #f0f8ff;
+	--sunset-purple: #fff5ee;
+	--sunset-rose: #ffe4e1;
+	--golden: #ffd700;
+	--horizon: #fff8dc;
+	--sun-glow: #fffaf0;
+
+	/* Mountain layers - lighter */
+	--peak-far: #a8c8d8;
+	--peak-mid: #90b8c8;
+	--peak-near: #78a8b8;
+	--peak-front: #6098a8;
+
+	/* Mist */
+	--mist: rgba(255, 255, 255, 0.6);
+	--mist-thick: rgba(255, 255, 255, 0.8);
+
+	/* UI colors - fresh blue */
+	--primary: #2563eb;
+	--primary-light: #3b82f6;
+	--primary-dark: #1d4ed8;
+	--accent: #06b6d4;
+	--accent-light: #22d3ee;
+	--emerald: #10b981;
+	--emerald-light: #34d399;
+	--amber: #f59e0b;
+	--violet: #8b5cf6;
+	--rose: #ef4444;
+
+	/* Neutrals - cool gray */
+	--slate-50: rgba(15, 23, 42, 0.04);
+	--slate-100: rgba(15, 23, 42, 0.08);
+	--slate-200: rgba(15, 23, 42, 0.12);
+	--slate-300: rgba(15, 23, 42, 0.2);
+	--slate-400: rgba(15, 23, 42, 0.35);
+	--slate-500: rgba(15, 23, 42, 0.5);
+	--slate-600: rgba(15, 23, 42, 0.65);
+	--slate-700: rgba(15, 23, 42, 0.8);
+	--slate-800: rgba(15, 23, 42, 0.95);
+
+	/* Glass */
+	--glass-bg: rgba(255, 255, 255, 0.6);
+	--glass-bg-solid: rgba(255, 255, 255, 0.8);
+	--glass-border: rgba(15, 23, 42, 0.08);
+	--glass-border-light: rgba(15, 23, 42, 0.12);
+	--glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+	--glass-glow: 0 0 60px rgba(37, 99, 235, 0.06);
+
+	/* Background */
+	--bg-primary: #f8fafc;
+	--bg-secondary: #e2e8f0;
+	--bg-card: rgba(255, 255, 255, 0.8);
+	
+	/* Text */
+	--text-primary: rgba(15, 23, 42, 0.95);
+	--text-secondary: rgba(15, 23, 42, 0.72);
+	--text-muted: rgba(15, 23, 42, 0.45);
+	
+	/* Scrollbar */
+	--scrollbar-thumb: rgba(15, 23, 42, 0.15);
+	--scrollbar-thumb-hover: rgba(15, 23, 42, 0.25);
+
+	/* Theme icon */
+	--theme-icon: ☀️;
+}
+
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+	/* Sky - night sky */
+	--sky-top: #0f172a;
+	--sky-mid: #1e293b;
+	--twilight: #334155;
+	--sunset-purple: #475569;
+	--sunset-rose: #64748b;
+	--golden: #94a3b8;
+	--horizon: #cbd5e1;
+	--sun-glow: #e2e8f0;
+
+	/* Mountain layers - dark silhouette */
+	--peak-far: #1e293b;
+	--peak-mid: #0f172a;
+	--peak-near: #0c1322;
+	--peak-front: #080e18;
+
+	/* Mist */
+	--mist: rgba(100, 116, 139, 0.1);
+	--mist-thick: rgba(100, 116, 139, 0.15);
+
+	/* UI colors - cool slate */
+	--primary: #60a5fa;
+	--primary-light: #93c5fd;
+	--primary-dark: #3b82f6;
+	--accent: #22d3ee;
+	--accent-light: #67e8f9;
+	--emerald: #34d399;
+	--emerald-light: #6ee7b7;
+	--amber: #fbbf24;
+	--violet: #a78bfa;
+	--rose: #f87171;
+
+	/* Neutrals - cool dark */
+	--slate-50: rgba(226, 232, 240, 0.04);
+	--slate-100: rgba(226, 232, 240, 0.08);
+	--slate-200: rgba(226, 232, 240, 0.12);
+	--slate-300: rgba(226, 232, 240, 0.2);
+	--slate-400: rgba(226, 232, 240, 0.35);
+	--slate-500: rgba(226, 232, 240, 0.5);
+	--slate-600: rgba(226, 232, 240, 0.65);
+	--slate-700: rgba(226, 232, 240, 0.8);
+	--slate-800: rgba(226, 232, 240, 0.92);
+
+	/* Glass */
+	--glass-bg: rgba(30, 41, 59, 0.5);
+	--glass-bg-solid: rgba(15, 23, 42, 0.7);
+	--glass-border: rgba(226, 232, 240, 0.08);
+	--glass-border-light: rgba(226, 232, 240, 0.12);
+	--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+	--glass-glow: 0 0 60px rgba(96, 165, 250, 0.06);
+
+	/* Background */
+	--bg-primary: #0f172a;
+	--bg-secondary: #1e293b;
+	--bg-card: rgba(15, 23, 42, 0.7);
+	
+	/* Text */
+	--text-primary: rgba(226, 232, 240, 0.95);
+	--text-secondary: rgba(226, 232, 240, 0.72);
+	--text-muted: rgba(226, 232, 240, 0.45);
+	
+	/* Scrollbar */
+	--scrollbar-thumb: rgba(226, 232, 240, 0.15);
+	--scrollbar-thumb-hover: rgba(226, 232, 240, 0.25);
+
+	/* Theme icon */
+	--theme-icon: 🌙;
+}
+
+/* Legacy compat */
+:root {
 	--primary-color: var(--primary);
 	--accent-color: var(--accent);
 	--dark-color: var(--slate-800);
@@ -109,10 +272,11 @@ html {
 body {
 	font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	min-height: 100vh;
-	color: var(--slate-800);
+	color: var(--text-primary);
 	-webkit-font-smoothing: antialiased;
 	overflow-x: hidden;
-	background: var(--sky-top);
+	background: var(--bg-primary);
+	transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .container {
@@ -127,6 +291,7 @@ h1, h2, h3 {
 	font-weight: 700;
 	line-height: 1.2;
 	letter-spacing: -0.02em;
+	color: var(--text-primary);
 }
 
 .icon {
@@ -151,9 +316,9 @@ h1, h2, h3 {
 	background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-	background: rgba(255, 250, 245, 0.15);
+	background: var(--scrollbar-thumb);
 	border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 250, 245, 0.25);
+	background: var(--scrollbar-thumb-hover);
 }

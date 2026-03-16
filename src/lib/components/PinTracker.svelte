@@ -232,10 +232,10 @@
 	}
 	@keyframes pulseRing { 0% { transform: scale(0.85); opacity: 0.6; } 100% { transform: scale(1.15); opacity: 0; } }
 	.step-label { font-size: 0.72rem; font-weight: 500; text-align: center; line-height: 1.3; transition: color 0.3s ease; max-width: 90px; }
-	.step.upcoming .step-label { color: var(--slate-400); }
+	.step.upcoming .step-label { color: var(--text-muted); }
 	.step.current .step-label { color: var(--primary-light); font-weight: 600; }
 	.step.completed .step-label { color: var(--emerald-light); }
-	.step-tap-hint { font-size: 0.55rem; color: var(--slate-400); opacity: 0; transition: opacity 0.2s; margin-top: -0.3rem; }
+	.step-tap-hint { font-size: 0.55rem; color: var(--text-muted); opacity: 0; transition: opacity 0.2s; margin-top: -0.3rem; }
 	.step:hover .step-tap-hint { opacity: 0.7; }
 
 	/* ===== CONNECTOR BAR ===== */
@@ -274,14 +274,14 @@
 	.checklist-icon.current { background: rgba(232, 151, 107, 0.12); }
 	.checklist-icon.current :global(svg) { color: var(--primary-light); }
 	.checklist-title-block { flex: 1; min-width: 0; }
-	.checklist-title-block h3 { font-size: 1.05rem; font-weight: 600; color: var(--slate-700); margin-bottom: 0.1rem; }
-	.checklist-title-block p { font-size: 0.8rem; color: var(--slate-400); font-weight: 300; }
+	.checklist-title-block h3 { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.1rem; }
+	.checklist-title-block p { font-size: 0.8rem; color: var(--text-muted); font-weight: 300; }
 	.checklist-close {
-		background: none; border: none; cursor: pointer; color: var(--slate-400);
+		background: none; border: none; cursor: pointer; color: var(--text-muted);
 		padding: 0.25rem; border-radius: 6px; transition: all 0.2s;
 		display: flex; align-items: center; justify-content: center;
 	}
-	.checklist-close:hover { color: var(--slate-600); background: rgba(255, 250, 245, 0.06); }
+	.checklist-close:hover { color: var(--text-primary); background: rgba(255, 250, 245, 0.06); }
 	.checklist-items { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
 	.checklist-item {
 		display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem;
@@ -294,15 +294,15 @@
 	}
 	.check-box.checked { background: var(--emerald); border-color: var(--emerald-light); box-shadow: 0 0 8px rgba(95, 170, 123, 0.25); }
 	.check-box.checked svg { color: white; }
-	.check-text { font-size: 0.88rem; color: var(--slate-500); font-weight: 400; transition: all 0.2s; }
-	.checklist-item.checked .check-text { color: var(--slate-600); }
+	.check-text { font-size: 0.88rem; color: var(--text-secondary); font-weight: 400; transition: all 0.2s; }
+	.checklist-item.checked .check-text { color: var(--text-primary); }
 	.checklist-progress {
 		display: flex; align-items: center; gap: 0.75rem; padding-top: 0.75rem;
 		border-top: 1px solid rgba(255, 250, 245, 0.05);
 	}
 	.checklist-bar { flex: 1; height: 4px; background: rgba(255, 250, 245, 0.08); border-radius: 100px; overflow: hidden; }
 	.checklist-fill { height: 100%; background: linear-gradient(90deg, var(--emerald), var(--emerald-light)); border-radius: 100px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-	.checklist-count { font-size: 0.75rem; color: var(--slate-400); font-weight: 500; white-space: nowrap; }
+	.checklist-count { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
 
 	/* ===== STATUS BANNER ===== */
 	.status-banner {
@@ -312,9 +312,9 @@
 	}
 	.status-glow { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 200px; height: 2px; background: linear-gradient(90deg, transparent, var(--primary), transparent); }
 	.status-content { position: relative; z-index: 1; }
-	.status-title { font-size: 1.3rem; font-weight: 700; color: var(--slate-800); margin-bottom: 0.3rem; letter-spacing: -0.02em; }
-	.status-message { font-size: 0.9rem; color: var(--slate-500); font-weight: 300; margin-bottom: 0.4rem; line-height: 1.5; }
-	.status-time { font-size: 0.72rem; color: var(--slate-400); font-weight: 400; }
+	.status-title { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.3rem; letter-spacing: -0.02em; }
+	.status-message { font-size: 0.9rem; color: var(--text-secondary); font-weight: 300; margin-bottom: 0.4rem; line-height: 1.5; }
+	.status-time { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; }
 
 	/* ===== INFO CARDS ===== */
 	.info-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.75rem; animation: fadeIn 0.5s ease 0.25s both; }
@@ -324,12 +324,12 @@
 		display: flex; flex-direction: column; gap: 0.25rem; transition: all 0.2s ease;
 	}
 	.info-card:hover { background: rgba(255, 250, 245, 0.06); border-color: rgba(255, 250, 245, 0.08); }
-	.info-label { font-size: 0.6rem; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
-	.info-value { font-size: 0.95rem; font-weight: 600; color: var(--slate-700); }
+	.info-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
+	.info-value { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
 
 	/* ===== UPDATES ===== */
 	.updates-section { animation: fadeIn 0.5s ease 0.35s both; }
-	.updates-section h3 { font-size: 0.85rem; color: var(--slate-400); font-weight: 500; margin-bottom: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
+	.updates-section h3 { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
 	.updates-list { display: flex; flex-direction: column; }
 	.update-item { display: flex; gap: 0.85rem; animation: fadeIn 0.4s ease both; }
 	.update-marker { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
@@ -338,9 +338,9 @@
 	.update-line { width: 1.5px; flex: 1; background: rgba(255, 250, 245, 0.06); min-height: 20px; }
 	.update-body { flex: 1; padding-bottom: 1.15rem; }
 	.update-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; gap: 0.5rem; }
-	.update-status { font-weight: 600; color: var(--slate-700); font-size: 0.82rem; }
-	.update-time { font-size: 0.68rem; color: var(--slate-400); white-space: nowrap; font-weight: 300; }
-	.update-message { color: var(--slate-400); font-size: 0.82rem; line-height: 1.5; font-weight: 300; }
+	.update-status { font-weight: 600; color: var(--text-primary); font-size: 0.82rem; }
+	.update-time { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; font-weight: 300; }
+	.update-message { color: var(--text-secondary); font-size: 0.82rem; line-height: 1.5; font-weight: 300; }
 
 	@media (max-width: 700px) {
 		.info-row { grid-template-columns: repeat(2, 1fr); }
