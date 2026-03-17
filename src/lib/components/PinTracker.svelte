@@ -10,15 +10,41 @@
 			status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
 			estimatedCompletion: string;
 			progress: number;
+			checkedItems: Record<string, boolean[]>;
+			signedOff: boolean;
+			signedOffBy: string | null;
+			signedOffAt: string | null;
+			auditTrail: {
+				action: string;
+				details: string;
+				user: string;
+				timestamp: string;
+			}[];
 			updates: {
 				status: string;
 				message: string;
 				timestamp: string;
 			}[];
 		};
+		onCheckItem?: (stageKey: string, itemIndex: number, checked: boolean) => void;
+		onSignOff?: () => void;
+		onEditGoal?: (field: string, value: string | number) => void;
+		canCheck?: boolean;
+		canSignOff?: boolean;
+		canEditGoals?: boolean;
+		currentUserName?: string;
 	}
 
-	let { selectedOrder }: Props = $props();
+	let { 
+		selectedOrder, 
+		onCheckItem, 
+		onSignOff, 
+		onEditGoal,
+		canCheck = false, 
+		canSignOff = false, 
+		canEditGoals = false,
+		currentUserName = ''
+	}: Props = $props();
 
 	const stages = orderStages;
 	let currentStageIndex = $derived(stages.findIndex((s) => s.key === selectedOrder.status));
@@ -37,9 +63,43 @@
 
 	function isItemChecked(stageIndex: number, itemIndex: number): boolean {
 		const status = getStageStatus(stageIndex);
+		const stageKey = stages[stageIndex].key;
+		const checkedItems = selectedOrder.checkedItems[stageKey];
+		
+		if (checkedItems && checkedItems[itemIndex] !== undefined) {
+			return checkedItems[itemIndex];
+		}
+		
 		if (status === 'completed') return true;
 		if (status === 'current') return itemIndex < 3;
 		return false;
+	}
+
+	function handleCheckItem(stageKey: string, itemIndex: number, currentChecked: boolean) {
+		if (canCheck && onCheckItem) {
+			onCheckItem(stageKey, itemIndex, !currentChecked);
+		}
+	}
+
+	// Editable fields state
+	let editingField: string | null = $state(null);
+	let editValue: string = $state('');
+
+	function startEdit(field: string, currentValue: string | number) {
+		if (!canEditGoals) return;
+		editingField = field;
+		editValue = String(currentValue);
+	}
+
+	function saveEdit(field: string) {
+		if (onEditGoal) {
+			onEditGoal(field, editValue);
+		}
+		editingField = null;
+	}
+
+	function cancelEdit() {
+		editingField = null;
 	}
 
 	const icons: Record<string, string> = {
@@ -115,14 +175,23 @@
 			{#each stage.checklist as item, i}
 				{@const checked = isItemChecked(expandedStage, i)}
 				<div class="checklist-item" class:checked style="animation-delay: {i * 50}ms">
-					<div class="check-box" class:checked>
+					<button 
+						class="check-box" 
+						class:checked
+						class:clickable={canCheck}
+						onclick={() => handleCheckItem(stage.key, i, checked)}
+						disabled={!canCheck}
+					>
 						{#if checked}
 							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12">
 								<polyline points="20 6 9 17 4 12"></polyline>
 							</svg>
 						{/if}
-					</div>
+					</button>
 					<span class="check-text">{item}</span>
+					{#if canCheck}
+						<span class="check-hint">click to {checked ? 'uncheck' : 'check'}</span>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -149,21 +218,89 @@
 <div class="info-row">
 	<div class="info-card">
 		<span class="info-label">Design</span>
-		<span class="info-value">{selectedOrder.pinDesign}</span>
+		{#if editingField === 'pinDesign'}
+			<div class="edit-field">
+				<input type="text" bind:value={editValue} class="edit-input" />
+				<button class="edit-save" onclick={() => saveEdit('pinDesign')}>✓</button>
+				<button class="edit-cancel" onclick={cancelEdit}>✕</button>
+			</div>
+		{:else}
+			<span class="info-value" class:editable={canEditGoals} onclick={() => startEdit('pinDesign', selectedOrder.pinDesign)}>
+				{selectedOrder.pinDesign}
+				{#if canEditGoals}<span class="edit-icon">✎</span>{/if}
+			</span>
+		{/if}
 	</div>
 	<div class="info-card">
 		<span class="info-label">Customer</span>
-		<span class="info-value">{selectedOrder.customerName}</span>
+		{#if editingField === 'customerName'}
+			<div class="edit-field">
+				<input type="text" bind:value={editValue} class="edit-input" />
+				<button class="edit-save" onclick={() => saveEdit('customerName')}>✓</button>
+				<button class="edit-cancel" onclick={cancelEdit}>✕</button>
+			</div>
+		{:else}
+			<span class="info-value" class:editable={canEditGoals} onclick={() => startEdit('customerName', selectedOrder.customerName)}>
+				{selectedOrder.customerName}
+				{#if canEditGoals}<span class="edit-icon">✎</span>{/if}
+			</span>
+		{/if}
 	</div>
 	<div class="info-card">
 		<span class="info-label">Quantity</span>
-		<span class="info-value">{selectedOrder.quantity} pins</span>
+		{#if editingField === 'quantity'}
+			<div class="edit-field">
+				<input type="number" bind:value={editValue} class="edit-input" />
+				<button class="edit-save" onclick={() => saveEdit('quantity')}>✓</button>
+				<button class="edit-cancel" onclick={cancelEdit}>✕</button>
+			</div>
+		{:else}
+			<span class="info-value" class:editable={canEditGoals} onclick={() => startEdit('quantity', selectedOrder.quantity)}>
+				{selectedOrder.quantity} pins
+				{#if canEditGoals}<span class="edit-icon">✎</span>{/if}
+			</span>
+		{/if}
 	</div>
 	<div class="info-card">
 		<span class="info-label">Est. Completion</span>
-		<span class="info-value">{selectedOrder.estimatedCompletion}</span>
+		{#if editingField === 'estimatedCompletion'}
+			<div class="edit-field">
+				<input type="date" bind:value={editValue} class="edit-input" />
+				<button class="edit-save" onclick={() => saveEdit('estimatedCompletion')}>✓</button>
+				<button class="edit-cancel" onclick={cancelEdit}>✕</button>
+			</div>
+		{:else}
+			<span class="info-value" class:editable={canEditGoals} onclick={() => startEdit('estimatedCompletion', selectedOrder.estimatedCompletion)}>
+				{selectedOrder.estimatedCompletion}
+				{#if canEditGoals}<span class="edit-icon">✎</span>{/if}
+			</span>
+		{/if}
 	</div>
 </div>
+
+<!-- ===== SIGN-OFF SECTION ===== -->
+{#if selectedOrder.status === 'quality' || selectedOrder.status === 'shipped'}
+	<div class="signoff-section">
+		{#if selectedOrder.signedOff}
+			<div class="signoff-badge signed">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+					<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+					<polyline points="22 4 12 14.01 9 11.01"></polyline>
+				</svg>
+				<span>Approved by {selectedOrder.signedOffBy}</span>
+				<span class="signoff-time">on {selectedOrder.signedOffAt}</span>
+			</div>
+		{:else if canSignOff}
+			<button class="signoff-button" onclick={onSignOff}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+					<path d="M12 20h9"></path>
+					<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+				</svg>
+				Sign Off / Approve Order
+			</button>
+		{/if}
+	</div>
+{/if}
 
 <!-- ===== UPDATES TIMELINE ===== -->
 {#if selectedOrder.updates.length > 1}
@@ -190,6 +327,32 @@
 		</div>
 	</div>
 {/if}
+
+<!-- ===== AUDIT TRAIL ===== -->
+<div class="audit-section">
+	<h3>
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+			<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+			<polyline points="14 2 14 8 20 8"></polyline>
+			<line x1="16" y1="13" x2="8" y2="13"></line>
+			<line x1="16" y1="17" x2="8" y2="17"></line>
+			<polyline points="10 9 9 9 8 9"></polyline>
+		</svg>
+		Audit Trail
+	</h3>
+	<div class="audit-list">
+		{#each selectedOrder.auditTrail as entry, i (entry.timestamp + i)}
+			<div class="audit-item">
+				<span class="audit-action">{entry.action}</span>
+				<span class="audit-details">{entry.details}</span>
+				<div class="audit-meta">
+					<span class="audit-user">{entry.user}</span>
+					<span class="audit-time">{entry.timestamp}</span>
+				</div>
+			</div>
+		{/each}
+	</div>
+</div>
 
 <style>
 	/* ===== HERO TRACKER BAR ===== */
@@ -291,11 +454,24 @@
 	.check-box {
 		width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255, 250, 245, 0.15);
 		display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.25s ease;
+		background: transparent;
+		cursor: default;
 	}
 	.check-box.checked { background: var(--emerald); border-color: var(--emerald-light); box-shadow: 0 0 8px rgba(95, 170, 123, 0.25); }
 	.check-box.checked svg { color: white; }
-	.check-text { font-size: 0.88rem; color: var(--text-secondary); font-weight: 400; transition: all 0.2s; }
+	.check-box.clickable { cursor: pointer; }
+	.check-box.clickable:hover { border-color: var(--primary); }
+	.check-box:disabled { cursor: not-allowed; }
+	.check-text { font-size: 0.88rem; color: var(--text-secondary); font-weight: 400; transition: all 0.2s; flex: 1; }
 	.checklist-item.checked .check-text { color: var(--text-primary); }
+	.check-hint {
+		font-size: 0.6rem;
+		color: var(--text-muted);
+		opacity: 0;
+		transition: opacity 0.2s;
+		margin-left: auto;
+	}
+	.checklist-item:hover .check-hint { opacity: 0.6; }
 	.checklist-progress {
 		display: flex; align-items: center; gap: 0.75rem; padding-top: 0.75rem;
 		border-top: 1px solid rgba(255, 250, 245, 0.05);
@@ -325,7 +501,31 @@
 	}
 	.info-card:hover { background: rgba(255, 250, 245, 0.06); border-color: rgba(255, 250, 245, 0.08); }
 	.info-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
-	.info-value { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+	.info-value { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 0.35rem; }
+	.info-value.editable { cursor: pointer; transition: all 0.2s; padding: 0.15rem 0.35rem; margin: -0.15rem -0.35rem; border-radius: 4px; }
+	.info-value.editable:hover { background: rgba(232, 151, 107, 0.1); }
+	.edit-icon { font-size: 0.75rem; opacity: 0; transition: opacity 0.2s; color: var(--primary); }
+	.info-value.editable:hover .edit-icon { opacity: 0.8; }
+	.edit-field { display: flex; align-items: center; gap: 0.35rem; }
+	.edit-input {
+		background: rgba(255, 250, 245, 0.08);
+		border: 1px solid rgba(232, 151, 107, 0.3);
+		border-radius: 4px;
+		padding: 0.25rem 0.5rem;
+		color: var(--text-primary);
+		font-size: 0.9rem;
+		font-weight: 600;
+		width: 100%;
+	}
+	.edit-input:focus { outline: none; border-color: var(--primary); }
+	.edit-save, .edit-cancel {
+		background: none; border: none; cursor: pointer; padding: 0.2rem; border-radius: 4px;
+		display: flex; align-items: center; justify-content: center;
+	}
+	.edit-save { color: var(--emerald); }
+	.edit-cancel { color: var(--text-muted); }
+	.edit-save:hover { background: rgba(95, 170, 123, 0.15); }
+	.edit-cancel:hover { background: rgba(255, 250, 245, 0.08); }
 
 	/* ===== UPDATES ===== */
 	.updates-section { animation: fadeIn 0.5s ease 0.35s both; }
@@ -341,6 +541,114 @@
 	.update-status { font-weight: 600; color: var(--text-primary); font-size: 0.82rem; }
 	.update-time { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; font-weight: 300; }
 	.update-message { color: var(--text-secondary); font-size: 0.82rem; line-height: 1.5; font-weight: 300; }
+
+	/* ===== SIGN-OFF SECTION ===== */
+	.signoff-section {
+		margin: 1.5rem 0;
+		animation: fadeIn 0.5s ease both;
+	}
+	.signoff-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.9rem 1.5rem;
+		background: linear-gradient(135deg, var(--emerald), #4a9b6d);
+		border: none;
+		border-radius: var(--radius-sm);
+		color: white;
+		font-size: 0.95rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.25s ease;
+		font-family: inherit;
+		box-shadow: 0 4px 15px rgba(95, 170, 123, 0.25);
+	}
+	.signoff-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 20px rgba(95, 170, 123, 0.35);
+	}
+	.signoff-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		background: rgba(95, 170, 123, 0.12);
+		border: 1px solid rgba(95, 170, 123, 0.25);
+		border-radius: var(--radius-sm);
+		color: var(--emerald-light);
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+	.signoff-badge.signed svg { color: var(--emerald); }
+	.signoff-time {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		font-weight: 300;
+		margin-left: auto;
+	}
+
+	/* ===== AUDIT TRAIL ===== */
+	.audit-section {
+		margin-top: 1.5rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid rgba(255, 250, 245, 0.05);
+		animation: fadeIn 0.5s ease 0.4s both;
+	}
+	.audit-section h3 {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		color: var(--text-muted);
+		font-weight: 500;
+		margin-bottom: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+	}
+	.audit-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-height: 200px;
+		overflow-y: auto;
+	}
+	.audit-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		padding: 0.6rem 0.75rem;
+		background: rgba(255, 250, 245, 0.03);
+		border-radius: 6px;
+		border-left: 3px solid var(--primary);
+	}
+	.audit-action {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--primary-light);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.audit-details {
+		font-size: 0.82rem;
+		color: var(--text-secondary);
+	}
+	.audit-meta {
+		display: flex;
+		justify-content: space-between;
+		margin-top: 0.25rem;
+	}
+	.audit-user {
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+	.audit-time {
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		font-weight: 300;
+	}
 
 	@media (max-width: 700px) {
 		.info-row { grid-template-columns: repeat(2, 1fr); }

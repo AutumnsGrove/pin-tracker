@@ -3,14 +3,30 @@
 	import PinTracker from '$lib/components/PinTracker.svelte';
 	import { theme } from '$lib/stores/theme';
 	import type { Theme } from '$lib/stores/theme';
+	import { currentUser, mockUsers, hasPermission, type UserRole } from '$lib/stores/users';
+	import NewOrderWizard from '$lib/components/NewOrderWizard.svelte';
 
 	let currentTheme = $state<Theme>('mountain');
+
+	// Wizard state
+	let wizardOpen = $state(false);
 
 	onMount(() => {
 		theme.init();
 		const unsubscribe = theme.subscribe(t => currentTheme = t);
+		// Auto-login as admin for demo
+		currentUser.login(mockUsers[0]);
 		return unsubscribe;
 	});
+
+	// Reactive permission checks
+	let userCanCheck = $derived(hasPermission($currentUser, 'check_items'));
+	let userCanSignOff = $derived(hasPermission($currentUser, 'sign_off'));
+	let userCanEditGoals = $derived(hasPermission($currentUser, 'edit_goals'));
+
+	function switchRole(role: UserRole) {
+		currentUser.switchRole(role);
+	}
 
 	interface Order {
 		id: string;
@@ -20,6 +36,19 @@
 		status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
 		estimatedCompletion: string;
 		progress: number;
+		// Track which checklist items are checked per stage
+		checkedItems: Record<string, boolean[]>;
+		// Sign-off status
+		signedOff: boolean;
+		signedOffBy: string | null;
+		signedOffAt: string | null;
+		// Audit trail
+		auditTrail: {
+			action: string;
+			details: string;
+			user: string;
+			timestamp: string;
+		}[];
 		updates: {
 			status: string;
 			message: string;
@@ -36,6 +65,23 @@
 			status: 'production',
 			estimatedCompletion: '2024-03-20',
 			progress: 60,
+			checkedItems: {
+				ordered: [true, true, true, true, true],
+				design: [true, true, true, true, true],
+				production: [true, true, true, false, false],
+				quality: [false, false, false, false, false],
+				shipped: [false, false, false, false, false]
+			},
+			signedOff: false,
+			signedOffBy: null,
+			signedOffAt: null,
+			auditTrail: [
+				{ action: 'Created', details: 'Order created', user: 'Admin User', timestamp: '2024-03-15 10:30 AM' },
+				{ action: 'Status Change', details: 'Moved to Design Phase', user: 'Merch Manager', timestamp: '2024-03-15 2:00 PM' },
+				{ action: 'Item Checked', details: 'Checked: Metal mold cast', user: 'Merch Manager', timestamp: '2024-03-16 9:00 AM' },
+				{ action: 'Item Checked', details: 'Checked: Base plating applied', user: 'Merch Manager', timestamp: '2024-03-16 9:05 AM' },
+				{ action: 'Item Checked', details: 'Checked: Enamel colors filled', user: 'Merch Manager', timestamp: '2024-03-16 9:15 AM' }
+			],
 			updates: [
 				{ status: 'Order Placed', message: 'Your order has been received and is being processed.', timestamp: '2024-03-15 10:30 AM' },
 				{ status: 'Design Phase', message: 'Design for Golden Retriever pin has been approved.', timestamp: '2024-03-15 2:00 PM' },
@@ -50,6 +96,19 @@
 			status: 'design',
 			estimatedCompletion: '2024-03-22',
 			progress: 25,
+			checkedItems: {
+				ordered: [true, true, true, true, true],
+				design: [true, true, false, false, false],
+				production: [false, false, false, false, false],
+				quality: [false, false, false, false, false],
+				shipped: [false, false, false, false, false]
+			},
+			signedOff: false,
+			signedOffBy: null,
+			signedOffAt: null,
+			auditTrail: [
+				{ action: 'Created', details: 'Order created', user: 'Admin User', timestamp: '2024-03-16 11:00 AM' }
+			],
 			updates: [
 				{ status: 'Order Placed', message: 'Your order has been received.', timestamp: '2024-03-16 11:00 AM' },
 				{ status: 'Design Phase', message: 'Our artists are creating the Space Rocket design mockup.', timestamp: '2024-03-16 11:05 AM' }
@@ -63,6 +122,20 @@
 			status: 'quality',
 			estimatedCompletion: '2024-03-18',
 			progress: 90,
+			checkedItems: {
+				ordered: [true, true, true, true, true],
+				design: [true, true, true, true, true],
+				production: [true, true, true, true, true],
+				quality: [true, true, false, false, false],
+				shipped: [false, false, false, false, false]
+			},
+			signedOff: true,
+			signedOffBy: 'Client - Emily Davis',
+			signedOffAt: '2024-03-17 3:00 PM',
+			auditTrail: [
+				{ action: 'Created', details: 'Order created', user: 'Admin User', timestamp: '2024-03-14 3:00 PM' },
+				{ action: 'Sign Off', details: 'Order signed off by client', user: 'Client - Emily Davis', timestamp: '2024-03-17 3:00 PM' }
+			],
 			updates: [
 				{ status: 'Order Placed', message: 'Your order has been received.', timestamp: '2024-03-14 3:00 PM' },
 				{ status: 'Design Approved', message: 'Cat with Crown design has been approved.', timestamp: '2024-03-14 5:30 PM' },
@@ -78,6 +151,20 @@
 			status: 'shipped',
 			estimatedCompletion: '2024-03-17',
 			progress: 100,
+			checkedItems: {
+				ordered: [true, true, true, true, true],
+				design: [true, true, true, true, true],
+				production: [true, true, true, true, true],
+				quality: [true, true, true, true, true],
+				shipped: [true, true, true, true, true]
+			},
+			signedOff: true,
+			signedOffBy: 'Client - Alex Rivera',
+			signedOffAt: '2024-03-15 2:00 PM',
+			auditTrail: [
+				{ action: 'Created', details: 'Order created', user: 'Admin User', timestamp: '2024-03-10 9:00 AM' },
+				{ action: 'Sign Off', details: 'Order signed off by client', user: 'Client - Alex Rivera', timestamp: '2024-03-15 2:00 PM' }
+			],
 			updates: [
 				{ status: 'Order Placed', message: 'Your order has been received.', timestamp: '2024-03-10 9:00 AM' },
 				{ status: 'Design Approved', message: 'Vintage Camera design has been approved.', timestamp: '2024-03-10 2:00 PM' },
@@ -94,6 +181,19 @@
 			status: 'ordered',
 			estimatedCompletion: '2024-03-25',
 			progress: 5,
+			checkedItems: {
+				ordered: [true, true, false, false, false],
+				design: [false, false, false, false, false],
+				production: [false, false, false, false, false],
+				quality: [false, false, false, false, false],
+				shipped: [false, false, false, false, false]
+			},
+			signedOff: false,
+			signedOffBy: null,
+			signedOffAt: null,
+			auditTrail: [
+				{ action: 'Created', details: 'Order created', user: 'Admin User', timestamp: '2024-03-17 8:30 AM' }
+			],
 			updates: [
 				{ status: 'Order Placed', message: 'Your order has been received and is in the queue.', timestamp: '2024-03-17 8:30 AM' }
 			]
@@ -106,21 +206,141 @@
 		selectedOrder = order;
 	}
 
-	function createNewOrder() {
+	function handleCheckItem(stageKey: string, itemIndex: number, checked: boolean) {
+		// Update the checkedItems array
+		if (!selectedOrder.checkedItems[stageKey]) {
+			selectedOrder.checkedItems[stageKey] = [false, false, false, false, false];
+		}
+		selectedOrder.checkedItems[stageKey][itemIndex] = checked;
+		
+		// Add to audit trail
+		const itemName = getChecklistItemName(stageKey, itemIndex);
+		selectedOrder.auditTrail = [
+			{
+				action: 'Item ' + (checked ? 'Checked' : 'Unchecked'),
+				details: (checked ? 'Checked' : 'Unchecked') + ': ' + itemName,
+				user: $currentUser?.name || 'Unknown User',
+				timestamp: new Date().toLocaleString()
+			},
+			...selectedOrder.auditTrail
+		];
+		
+		// Trigger reactivity
+		orders = [...orders];
+	}
+
+	function getChecklistItemName(stageKey: string, itemIndex: number): string {
+		const stageNames: Record<string, string[]> = {
+			ordered: ['Order details confirmed', 'Payment processed', 'Design reference uploaded', 'Assigned to production queue', 'Confirmation email sent'],
+			design: ['Initial concept sketch created', 'Color palette finalized', 'Vector artwork prepared', 'Client approval received', 'Die line template generated'],
+			production: ['Metal mold cast', 'Base plating applied', 'Enamel colors filled', 'Baking and curing complete', 'Attachment hardware fitted'],
+			quality: ['Visual inspection passed', 'Color accuracy verified', 'Plating quality confirmed', 'Pin mechanism tested', 'Packaging prepared'],
+			shipped: ['Order packed and sealed', 'Shipping label created', 'Handed to carrier', 'Tracking number generated', 'Delivery confirmation sent']
+		};
+		return stageNames[stageKey]?.[itemIndex] || 'Unknown item';
+	}
+
+	function handleSignOff() {
+		selectedOrder.signedOff = true;
+		selectedOrder.signedOffBy = $currentUser?.name || 'Unknown User';
+		selectedOrder.signedOffAt = new Date().toLocaleString();
+		
+		// Add to audit trail
+		selectedOrder.auditTrail = [
+			{
+				action: 'Sign Off',
+				details: 'Order signed off by client',
+				user: $currentUser?.name || 'Unknown User',
+				timestamp: new Date().toLocaleString()
+			},
+			...selectedOrder.auditTrail
+		];
+		
+		orders = [...orders];
+	}
+
+	function handleEditGoal(field: string, value: string | number) {
+		// Validate field name against allowlist
+		const allowedFields = ['estimatedCompletion', 'customerName', 'pinDesign', 'quantity'];
+		if (!allowedFields.includes(field)) {
+			console.warn(`Invalid editable field: ${field}`);
+			return;
+		}
+		
+		// Update the field value with proper typing
+		switch (field) {
+			case 'estimatedCompletion':
+				selectedOrder.estimatedCompletion = String(value);
+				break;
+			case 'customerName':
+				selectedOrder.customerName = String(value);
+				break;
+			case 'pinDesign':
+				selectedOrder.pinDesign = String(value);
+				break;
+			case 'quantity':
+				selectedOrder.quantity = Number(value);
+				break;
+		}
+		
+		// Add to audit trail
+		selectedOrder.auditTrail = [
+			{
+				action: 'Goal Edited',
+				details: `Changed ${field} to ${value}`,
+				user: $currentUser?.name || 'Unknown User',
+				timestamp: new Date().toLocaleString()
+			},
+			...selectedOrder.auditTrail
+		];
+		
+		orders = [...orders];
+	}
+
+	function openWizard() {
+		wizardOpen = true;
+	}
+
+	function closeWizard() {
+		wizardOpen = false;
+	}
+
+	function handleWizardSubmit(orderData: {
+		customerName: string;
+		pinDesign: string;
+		quantity: number;
+		estimatedCompletion: string;
+		notes: string;
+	}) {
 		const newOrder: Order = {
 			id: `PIN-2024-00${orders.length + 1}`,
-			customerName: 'New Customer',
-			pinDesign: 'Custom Design',
-			quantity: 1,
+			customerName: orderData.customerName,
+			pinDesign: orderData.pinDesign,
+			quantity: orderData.quantity,
 			status: 'ordered',
-			estimatedCompletion: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			estimatedCompletion: orderData.estimatedCompletion,
 			progress: 5,
+			checkedItems: {
+				ordered: [false, false, false, false, false],
+				design: [false, false, false, false, false],
+				production: [false, false, false, false, false],
+				quality: [false, false, false, false, false],
+				shipped: [false, false, false, false, false]
+			},
+			signedOff: false,
+			signedOffBy: null,
+			signedOffAt: null,
+			auditTrail: [
+				{ action: 'Created', details: 'Order created', user: $currentUser?.name || 'Admin User', timestamp: new Date().toLocaleString() },
+				...(orderData.notes ? [{ action: 'Notes', details: orderData.notes, user: $currentUser?.name || 'Admin User', timestamp: new Date().toLocaleString() }] : [])
+			],
 			updates: [
-				{ status: 'Order Placed', message: 'Your order has been received and is in the queue.', timestamp: new Date().toLocaleString() }
+				{ status: 'Order Placed', message: `Order for ${orderData.customerName} has been received and is in the queue.`, timestamp: new Date().toLocaleString() }
 			]
 		};
 		orders = [newOrder, ...orders];
 		selectedOrder = newOrder;
+		wizardOpen = false;
 	}
 </script>
 
@@ -171,7 +391,47 @@
 
 <div class="container">
 	<header>
-		<div class="header-badge">PIN PRODUCTION TRACKER</div>
+		<div class="header-top">
+			<div class="header-badge">PIN PRODUCTION TRACKER</div>
+			<!-- Role Selector -->
+			<div class="role-selector">
+				<span class="role-label">Viewing as:</span>
+				<div class="role-buttons">
+					<button 
+						class="role-btn" 
+						class:active={$currentUser?.role === 'admin'}
+						onclick={() => switchRole('admin')}
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+						</svg>
+						Admin
+					</button>
+					<button 
+						class="role-btn"
+						class:active={$currentUser?.role === 'merch_manager'}
+						onclick={() => switchRole('merch_manager')}
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+							<circle cx="12" cy="7" r="4"></circle>
+						</svg>
+						Merch
+					</button>
+					<button 
+						class="role-btn client"
+						class:active={$currentUser?.role === 'client'}
+						onclick={() => switchRole('client')}
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+							<circle cx="12" cy="12" r="3"></circle>
+						</svg>
+						Client
+					</button>
+				</div>
+			</div>
+		</div>
 		<h1>Pin Tracker</h1>
 	</header>
 
@@ -192,7 +452,7 @@
 				</span>
 			</button>
 		{/each}
-		<button class="order-tab new-tab" onclick={createNewOrder}>
+		<button class="order-tab new-tab" onclick={openWizard}>
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
 				<line x1="12" y1="5" x2="12" y2="19"></line>
 				<line x1="5" y1="12" x2="19" y2="12"></line>
@@ -204,9 +464,25 @@
 	<!-- Main tracker panel -->
 	<div class="tracker-panel">
 		{#key selectedOrder.id}
-			<PinTracker {selectedOrder} />
+			<PinTracker 
+				{selectedOrder} 
+				onCheckItem={handleCheckItem}
+				onSignOff={handleSignOff}
+				onEditGoal={handleEditGoal}
+				canCheck={userCanCheck}
+				canSignOff={userCanSignOff}
+				canEditGoals={userCanEditGoals}
+				currentUserName={$currentUser?.name || ''}
+			/>
 		{/key}
 	</div>
+
+	<!-- New Order Wizard Modal -->
+	<NewOrderWizard 
+		isOpen={wizardOpen}
+		onClose={closeWizard}
+		onSubmit={handleWizardSubmit}
+	/>
 </div>
 
 <style>
@@ -244,12 +520,66 @@
 
 	/* ===== HEADER ===== */
 	header { text-align: center; margin-bottom: 1.5rem; animation: fadeIn 0.8s ease both; }
+	.header-top {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 0.5rem;
+	}
 	.header-badge {
 		display: inline-block; padding: 0.3rem 1rem;
 		background: rgba(232, 151, 107, 0.12); border: 1px solid rgba(232, 151, 107, 0.2);
 		color: var(--primary-light); border-radius: 100px;
 		font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em;
 		margin-bottom: 0.6rem; backdrop-filter: blur(8px);
+	}
+	/* Role Selector */
+	.role-selector {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: rgba(255, 250, 245, 0.04);
+		padding: 0.35rem 0.75rem;
+		border-radius: 100px;
+		border: 1px solid rgba(255, 250, 245, 0.08);
+	}
+	.role-label {
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.role-buttons {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.role-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.3rem 0.6rem;
+		border: none;
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 0.7rem;
+		font-weight: 500;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-family: inherit;
+	}
+	.role-btn:hover {
+		background: rgba(255, 250, 245, 0.06);
+		color: var(--text-secondary);
+	}
+	.role-btn.active {
+		background: rgba(232, 151, 107, 0.15);
+		color: var(--primary-light);
+	}
+	.role-btn.client.active {
+		background: rgba(95, 170, 123, 0.15);
+		color: var(--emerald-light);
 	}
 	header h1 {
 		font-size: 2.8rem;
