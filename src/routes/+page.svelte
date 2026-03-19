@@ -206,13 +206,22 @@
 		selectedOrder = order;
 	}
 
+	const stageOrder: Array<'ordered' | 'design' | 'production' | 'quality' | 'shipped'> = ['ordered', 'design', 'production', 'quality', 'shipped'];
+	const stageDisplayNames: Record<string, string> = {
+		ordered: 'Order Received',
+		design: 'Design Phase',
+		production: 'In Production',
+		quality: 'Quality Check',
+		shipped: 'Shipped!'
+	};
+
 	function handleCheckItem(stageKey: string, itemIndex: number, checked: boolean) {
 		// Update the checkedItems array
 		if (!selectedOrder.checkedItems[stageKey]) {
 			selectedOrder.checkedItems[stageKey] = [false, false, false, false, false];
 		}
 		selectedOrder.checkedItems[stageKey][itemIndex] = checked;
-		
+
 		// Add to audit trail
 		const itemName = getChecklistItemName(stageKey, itemIndex);
 		selectedOrder.auditTrail = [
@@ -224,7 +233,50 @@
 			},
 			...selectedOrder.auditTrail
 		];
-		
+
+		// Auto-advance: if all items in the current stage are checked, move to next stage
+		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
+		if (checked && stageKey === selectedOrder.status && currentStageIdx < stageOrder.length - 1) {
+			const stageItems = selectedOrder.checkedItems[stageKey];
+			const allChecked = stageItems && stageItems.length === 5 && stageItems.every(Boolean);
+			if (allChecked) {
+				const nextStage = stageOrder[currentStageIdx + 1];
+				selectedOrder.status = nextStage;
+
+				// Add stage advancement to audit trail
+				selectedOrder.auditTrail = [
+					{
+						action: 'Stage Advanced',
+						details: `All items complete — moved to ${stageDisplayNames[nextStage]}`,
+						user: $currentUser?.name || 'Unknown User',
+						timestamp: new Date().toLocaleString()
+					},
+					...selectedOrder.auditTrail
+				];
+
+				// Add to activity timeline
+				selectedOrder.updates = [
+					...selectedOrder.updates,
+					{
+						status: stageDisplayNames[nextStage],
+						message: `All ${stageDisplayNames[stageKey]} tasks completed. Moving to ${stageDisplayNames[nextStage]}.`,
+						timestamp: new Date().toLocaleString()
+					}
+				];
+			}
+		}
+
+		// Recalculate progress based on total checked items across all stages
+		let totalChecked = 0;
+		const totalItems = stageOrder.length * 5; // 5 items per stage
+		for (const stage of stageOrder) {
+			const items = selectedOrder.checkedItems[stage];
+			if (items) {
+				totalChecked += items.filter(Boolean).length;
+			}
+		}
+		selectedOrder.progress = Math.round((totalChecked / totalItems) * 100);
+
 		// Trigger reactivity
 		orders = [...orders];
 	}
