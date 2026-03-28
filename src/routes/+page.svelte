@@ -23,9 +23,15 @@
 	let userCanCheck = $derived(hasPermission($currentUser, 'check_items'));
 	let userCanSignOff = $derived(hasPermission($currentUser, 'sign_off'));
 	let userCanEditGoals = $derived(hasPermission($currentUser, 'edit_goals'));
+	let userCanManageSteps = $derived(hasPermission($currentUser, 'manage_steps'));
 
 	function switchRole(role: UserRole) {
 		currentUser.switchRole(role);
+	}
+
+	interface CheckedItem {
+		checked: boolean;
+		completedBy: string | null;
 	}
 
 	interface Order {
@@ -36,8 +42,10 @@
 		status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
 		estimatedCompletion: string;
 		progress: number;
-		// Track which checklist items are checked per stage
-		checkedItems: Record<string, boolean[]>;
+		// Track which checklist items are checked per stage, and who completed them
+		checkedItems: Record<string, CheckedItem[]>;
+		// Track step names per stage (mutable by admin)
+		stepNames: Record<string, string[]>;
 		// Sign-off status
 		signedOff: boolean;
 		signedOffBy: string | null;
@@ -56,6 +64,37 @@
 		}[];
 	}
 
+	const C = (checked: boolean, by: string | null = null): CheckedItem => ({ checked, completedBy: checked ? (by || 'Admin User') : null });
+	const U = (): CheckedItem => ({ checked: false, completedBy: null });
+
+	function emptyStage(): CheckedItem[] {
+		return [
+			{ checked: false, completedBy: null },
+			{ checked: false, completedBy: null },
+			{ checked: false, completedBy: null },
+			{ checked: false, completedBy: null },
+			{ checked: false, completedBy: null }
+		];
+	}
+
+	const defaultStepNames: Record<string, string[]> = {
+		ordered: ['Order details confirmed', 'Payment processed', 'Design reference uploaded', 'Assigned to production queue', 'Confirmation email sent'],
+		design: ['Initial concept sketch created', 'Color palette finalized', 'Vector artwork prepared', 'Client approval received', 'Die line template generated'],
+		production: ['Metal mold cast', 'Base plating applied', 'Enamel colors filled', 'Baking and curing complete', 'Attachment hardware fitted'],
+		quality: ['Visual inspection passed', 'Color accuracy verified', 'Plating quality confirmed', 'Pin mechanism tested', 'Packaging prepared'],
+		shipped: ['Order packed and sealed', 'Shipping label created', 'Handed to carrier', 'Tracking number generated', 'Delivery confirmation sent']
+	};
+
+	function defaultStepNamesForOrder(): Record<string, string[]> {
+		return {
+			ordered: [...defaultStepNames.ordered],
+			design: [...defaultStepNames.design],
+			production: [...defaultStepNames.production],
+			quality: [...defaultStepNames.quality],
+			shipped: [...defaultStepNames.shipped]
+		};
+	}
+
 	let orders: Order[] = $state([
 		{
 			id: 'PIN-2024-001',
@@ -66,21 +105,22 @@
 			estimatedCompletion: '2024-03-20',
 			progress: 60,
 			checkedItems: {
-				ordered: [true, true, true, true, true],
-				design: [true, true, true, true, true],
-				production: [true, true, true, false, false],
-				quality: [false, false, false, false, false],
-				shipped: [false, false, false, false, false]
+				ordered: [C(true), C(true), C(true), C(true), C(true)],
+				design: [C(true), C(true), C(true), C(true), C(true)],
+				production: [C(true), C(true), C(true), U(), U()],
+				quality: [U(), U(), U(), U(), U()],
+				shipped: [U(), U(), U(), U(), U()]
 			},
+			stepNames: defaultStepNamesForOrder(),
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
 			auditTrail: [
 				{ action: 'Created', details: 'Order created', user: 'Admin User', timestamp: '2024-03-15 10:30 AM' },
-				{ action: 'Status Change', details: 'Moved to Design Phase', user: 'Merch Manager', timestamp: '2024-03-15 2:00 PM' },
-				{ action: 'Item Checked', details: 'Checked: Metal mold cast', user: 'Merch Manager', timestamp: '2024-03-16 9:00 AM' },
-				{ action: 'Item Checked', details: 'Checked: Base plating applied', user: 'Merch Manager', timestamp: '2024-03-16 9:05 AM' },
-				{ action: 'Item Checked', details: 'Checked: Enamel colors filled', user: 'Merch Manager', timestamp: '2024-03-16 9:15 AM' }
+				{ action: 'Status Change', details: 'Moved to Design Phase', user: 'Admin User', timestamp: '2024-03-15 2:00 PM' },
+				{ action: 'Item Checked', details: 'Checked: Metal mold cast', user: 'Admin User', timestamp: '2024-03-16 9:00 AM' },
+				{ action: 'Item Checked', details: 'Checked: Base plating applied', user: 'Admin User', timestamp: '2024-03-16 9:05 AM' },
+				{ action: 'Item Checked', details: 'Checked: Enamel colors filled', user: 'Admin User', timestamp: '2024-03-16 9:15 AM' }
 			],
 			updates: [
 				{ status: 'Order Placed', message: 'Your order has been received and is being processed.', timestamp: '2024-03-15 10:30 AM' },
@@ -97,12 +137,13 @@
 			estimatedCompletion: '2024-03-22',
 			progress: 25,
 			checkedItems: {
-				ordered: [true, true, true, true, true],
-				design: [true, true, false, false, false],
-				production: [false, false, false, false, false],
-				quality: [false, false, false, false, false],
-				shipped: [false, false, false, false, false]
+				ordered: [C(true), C(true), C(true), C(true), C(true)],
+				design: [C(true), C(true), U(), U(), U()],
+				production: [U(), U(), U(), U(), U()],
+				quality: [U(), U(), U(), U(), U()],
+				shipped: [U(), U(), U(), U(), U()]
 			},
+			stepNames: defaultStepNamesForOrder(),
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -123,12 +164,13 @@
 			estimatedCompletion: '2024-03-18',
 			progress: 90,
 			checkedItems: {
-				ordered: [true, true, true, true, true],
-				design: [true, true, true, true, true],
-				production: [true, true, true, true, true],
-				quality: [true, true, false, false, false],
-				shipped: [false, false, false, false, false]
+				ordered: [C(true), C(true), C(true), C(true), C(true)],
+				design: [C(true), C(true), C(true), C(true), C(true)],
+				production: [C(true), C(true), C(true), C(true), C(true)],
+				quality: [C(true), C(true), U(), U(), U()],
+				shipped: [U(), U(), U(), U(), U()]
 			},
+			stepNames: defaultStepNamesForOrder(),
 			signedOff: true,
 			signedOffBy: 'Client - Emily Davis',
 			signedOffAt: '2024-03-17 3:00 PM',
@@ -152,12 +194,13 @@
 			estimatedCompletion: '2024-03-17',
 			progress: 100,
 			checkedItems: {
-				ordered: [true, true, true, true, true],
-				design: [true, true, true, true, true],
-				production: [true, true, true, true, true],
-				quality: [true, true, true, true, true],
-				shipped: [true, true, true, true, true]
+				ordered: [C(true), C(true), C(true), C(true), C(true)],
+				design: [C(true), C(true), C(true), C(true), C(true)],
+				production: [C(true), C(true), C(true), C(true), C(true)],
+				quality: [C(true), C(true), C(true), C(true), C(true)],
+				shipped: [C(true), C(true), C(true), C(true), C(true)]
 			},
+			stepNames: defaultStepNamesForOrder(),
 			signedOff: true,
 			signedOffBy: 'Client - Alex Rivera',
 			signedOffAt: '2024-03-15 2:00 PM',
@@ -182,12 +225,13 @@
 			estimatedCompletion: '2024-03-25',
 			progress: 5,
 			checkedItems: {
-				ordered: [true, true, false, false, false],
-				design: [false, false, false, false, false],
-				production: [false, false, false, false, false],
-				quality: [false, false, false, false, false],
-				shipped: [false, false, false, false, false]
+				ordered: [C(true), C(true), U(), U(), U()],
+				design: [U(), U(), U(), U(), U()],
+				production: [U(), U(), U(), U(), U()],
+				quality: [U(), U(), U(), U(), U()],
+				shipped: [U(), U(), U(), U(), U()]
 			},
+			stepNames: defaultStepNamesForOrder(),
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -218,9 +262,13 @@
 	function handleCheckItem(stageKey: string, itemIndex: number, checked: boolean) {
 		// Update the checkedItems array
 		if (!selectedOrder.checkedItems[stageKey]) {
-			selectedOrder.checkedItems[stageKey] = [false, false, false, false, false];
+			const stepCount = selectedOrder.stepNames[stageKey]?.length ?? 5;
+			selectedOrder.checkedItems[stageKey] = Array.from({ length: stepCount }, () => ({ checked: false, completedBy: null }));
 		}
-		selectedOrder.checkedItems[stageKey][itemIndex] = checked;
+		selectedOrder.checkedItems[stageKey][itemIndex] = {
+			checked,
+			completedBy: checked ? ($currentUser?.role || null) : null
+		};
 
 		// Add to audit trail
 		const itemName = getChecklistItemName(stageKey, itemIndex);
@@ -238,7 +286,7 @@
 		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
 		if (checked && stageKey === selectedOrder.status && currentStageIdx < stageOrder.length - 1) {
 			const stageItems = selectedOrder.checkedItems[stageKey];
-			const allChecked = stageItems && stageItems.length === 5 && stageItems.every(Boolean);
+			const allChecked = stageItems && stageItems.length > 0 && stageItems.every(item => item.checked);
 			if (allChecked) {
 				const nextStage = stageOrder[currentStageIdx + 1];
 				selectedOrder.status = nextStage;
@@ -268,28 +316,22 @@
 
 		// Recalculate progress based on total checked items across all stages
 		let totalChecked = 0;
-		const totalItems = stageOrder.length * 5; // 5 items per stage
+		let totalItems = 0;
 		for (const stage of stageOrder) {
 			const items = selectedOrder.checkedItems[stage];
 			if (items) {
-				totalChecked += items.filter(Boolean).length;
+				totalChecked += items.filter(item => item.checked).length;
+				totalItems += items.length;
 			}
 		}
-		selectedOrder.progress = Math.round((totalChecked / totalItems) * 100);
+		selectedOrder.progress = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
 
 		// Trigger reactivity
 		orders = [...orders];
 	}
 
 	function getChecklistItemName(stageKey: string, itemIndex: number): string {
-		const stageNames: Record<string, string[]> = {
-			ordered: ['Order details confirmed', 'Payment processed', 'Design reference uploaded', 'Assigned to production queue', 'Confirmation email sent'],
-			design: ['Initial concept sketch created', 'Color palette finalized', 'Vector artwork prepared', 'Client approval received', 'Die line template generated'],
-			production: ['Metal mold cast', 'Base plating applied', 'Enamel colors filled', 'Baking and curing complete', 'Attachment hardware fitted'],
-			quality: ['Visual inspection passed', 'Color accuracy verified', 'Plating quality confirmed', 'Pin mechanism tested', 'Packaging prepared'],
-			shipped: ['Order packed and sealed', 'Shipping label created', 'Handed to carrier', 'Tracking number generated', 'Delivery confirmation sent']
-		};
-		return stageNames[stageKey]?.[itemIndex] || 'Unknown item';
+		return selectedOrder.stepNames[stageKey]?.[itemIndex] || 'Unknown item';
 	}
 
 	function handleSignOff() {
@@ -349,6 +391,86 @@
 		orders = [...orders];
 	}
 
+	function handleAddStep(stageKey: string, stepName: string) {
+		if (!selectedOrder.stepNames[stageKey]) {
+			selectedOrder.stepNames[stageKey] = [];
+		}
+		selectedOrder.stepNames[stageKey] = [...selectedOrder.stepNames[stageKey], stepName];
+
+		if (!selectedOrder.checkedItems[stageKey]) {
+			selectedOrder.checkedItems[stageKey] = [];
+		}
+		selectedOrder.checkedItems[stageKey] = [
+			...selectedOrder.checkedItems[stageKey],
+			{ checked: false, completedBy: null }
+		];
+
+		selectedOrder.auditTrail = [
+			{
+				action: 'Step Added',
+				details: `Added step: ${stepName}`,
+				user: $currentUser?.name || 'Unknown User',
+				timestamp: new Date().toLocaleString()
+			},
+			...selectedOrder.auditTrail
+		];
+
+		orders = [...orders];
+	}
+
+	function handleDeleteStep(stageKey: string, itemIndex: number) {
+		const stepName = selectedOrder.stepNames[stageKey]?.[itemIndex] || 'Unknown';
+		if (selectedOrder.stepNames[stageKey]) {
+			selectedOrder.stepNames[stageKey] = selectedOrder.stepNames[stageKey].filter((_, i) => i !== itemIndex);
+		}
+		if (selectedOrder.checkedItems[stageKey]) {
+			selectedOrder.checkedItems[stageKey] = selectedOrder.checkedItems[stageKey].filter((_, i) => i !== itemIndex);
+		}
+
+		// Recalculate progress
+		let totalChecked = 0;
+		let totalItems = 0;
+		for (const stage of stageOrder) {
+			const items = selectedOrder.checkedItems[stage];
+			if (items) {
+				totalChecked += items.filter(item => item.checked).length;
+				totalItems += items.length;
+			}
+		}
+		selectedOrder.progress = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+
+		selectedOrder.auditTrail = [
+			{
+				action: 'Step Deleted',
+				details: `Deleted step: ${stepName}`,
+				user: $currentUser?.name || 'Unknown User',
+				timestamp: new Date().toLocaleString()
+			},
+			...selectedOrder.auditTrail
+		];
+
+		orders = [...orders];
+	}
+
+	function handleModifyStep(stageKey: string, itemIndex: number, newName: string) {
+		const oldName = selectedOrder.stepNames[stageKey]?.[itemIndex] || 'Unknown';
+		if (selectedOrder.stepNames[stageKey]) {
+			selectedOrder.stepNames[stageKey][itemIndex] = newName;
+		}
+
+		selectedOrder.auditTrail = [
+			{
+				action: 'Step Modified',
+				details: `Renamed step: ${oldName} → ${newName}`,
+				user: $currentUser?.name || 'Unknown User',
+				timestamp: new Date().toLocaleString()
+			},
+			...selectedOrder.auditTrail
+		];
+
+		orders = [...orders];
+	}
+
 	function openWizard() {
 		wizardOpen = true;
 	}
@@ -373,12 +495,13 @@
 			estimatedCompletion: orderData.estimatedCompletion,
 			progress: 5,
 			checkedItems: {
-				ordered: [false, false, false, false, false],
-				design: [false, false, false, false, false],
-				production: [false, false, false, false, false],
-				quality: [false, false, false, false, false],
-				shipped: [false, false, false, false, false]
+				ordered: emptyStage(),
+				design: emptyStage(),
+				production: emptyStage(),
+				quality: emptyStage(),
+				shipped: emptyStage()
 			},
+			stepNames: defaultStepNamesForOrder(),
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -460,17 +583,6 @@
 						Admin
 					</button>
 					<button 
-						class="role-btn"
-						class:active={$currentUser?.role === 'merch_manager'}
-						onclick={() => switchRole('merch_manager')}
-					>
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-							<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-							<circle cx="12" cy="7" r="4"></circle>
-						</svg>
-						Merch
-					</button>
-					<button 
 						class="role-btn client"
 						class:active={$currentUser?.role === 'client'}
 						onclick={() => switchRole('client')}
@@ -521,9 +633,14 @@
 				onCheckItem={handleCheckItem}
 				onSignOff={handleSignOff}
 				onEditGoal={handleEditGoal}
+				onAddStep={handleAddStep}
+				onDeleteStep={handleDeleteStep}
+				onModifyStep={handleModifyStep}
 				canCheck={userCanCheck}
 				canSignOff={userCanSignOff}
 				canEditGoals={userCanEditGoals}
+				canManageSteps={userCanManageSteps}
+				currentUserRole={$currentUser?.role || ''}
 				currentUserName={$currentUser?.name || ''}
 			/>
 		{/key}

@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { orderStages } from './stages';
 
+	interface CheckedItem {
+		checked: boolean;
+		completedBy: string | null;
+	}
+
 	interface Props {
 		selectedOrder: {
 			id: string;
@@ -10,7 +15,8 @@
 			status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
 			estimatedCompletion: string;
 			progress: number;
-			checkedItems: Record<string, boolean[]>;
+			checkedItems: Record<string, CheckedItem[]>;
+			stepNames: Record<string, string[]>;
 			signedOff: boolean;
 			signedOffBy: string | null;
 			signedOffAt: string | null;
@@ -29,9 +35,14 @@
 		onCheckItem?: (stageKey: string, itemIndex: number, checked: boolean) => void;
 		onSignOff?: () => void;
 		onEditGoal?: (field: string, value: string | number) => void;
+		onAddStep?: (stageKey: string, stepName: string) => void;
+		onDeleteStep?: (stageKey: string, itemIndex: number) => void;
+		onModifyStep?: (stageKey: string, itemIndex: number, newName: string) => void;
 		canCheck?: boolean;
 		canSignOff?: boolean;
 		canEditGoals?: boolean;
+		canManageSteps?: boolean;
+		currentUserRole?: string;
 		currentUserName?: string;
 	}
 
@@ -40,14 +51,23 @@
 		onCheckItem, 
 		onSignOff, 
 		onEditGoal,
+		onAddStep,
+		onDeleteStep,
+		onModifyStep,
 		canCheck = false, 
 		canSignOff = false, 
 		canEditGoals = false,
+		canManageSteps = false,
+		currentUserRole = '',
 		currentUserName = ''
 	}: Props = $props();
 
 	const stages = orderStages;
 	let currentStageIndex = $derived(stages.findIndex((s) => s.key === selectedOrder.status));
+
+	function getStepNames(stageKey: string): string[] {
+		return selectedOrder.stepNames[stageKey] || stages.find(s => s.key === stageKey)?.checklist || [];
+	}
 
 	function getStageStatus(index: number): 'completed' | 'current' | 'upcoming' {
 		if (index < currentStageIndex) return 'completed';
@@ -62,23 +82,87 @@
 	}
 
 	function isItemChecked(stageIndex: number, itemIndex: number): boolean {
-		const status = getStageStatus(stageIndex);
 		const stageKey = stages[stageIndex].key;
 		const checkedItems = selectedOrder.checkedItems[stageKey];
 		
 		if (checkedItems && checkedItems[itemIndex] !== undefined) {
-			return checkedItems[itemIndex];
+			return checkedItems[itemIndex].checked;
 		}
 		
-		if (status === 'completed') return true;
-		if (status === 'current') return itemIndex < 3;
 		return false;
+	}
+
+	function getItemCompletedBy(stageIndex: number, itemIndex: number): string | null {
+		const stageKey = stages[stageIndex].key;
+		const checkedItems = selectedOrder.checkedItems[stageKey];
+		if (checkedItems && checkedItems[itemIndex] !== undefined) {
+			return checkedItems[itemIndex].completedBy;
+		}
+		return null;
 	}
 
 	function handleCheckItem(stageKey: string, itemIndex: number, currentChecked: boolean) {
 		if (canCheck && onCheckItem) {
 			onCheckItem(stageKey, itemIndex, !currentChecked);
 		}
+	}
+
+	// Step management state
+	let addingStepTo: string | null = $state(null);
+	let newStepName: string = $state('');
+	let editingStep: { stageKey: string; itemIndex: number } | null = $state(null);
+	let editStepName: string = $state('');
+	let confirmingDelete: { stageKey: string; itemIndex: number } | null = $state(null);
+
+	function startAddStep(stageKey: string) {
+		addingStepTo = stageKey;
+		newStepName = '';
+	}
+
+	function confirmAddStep(stageKey: string) {
+		if (newStepName.trim() && onAddStep) {
+			onAddStep(stageKey, newStepName.trim());
+		}
+		addingStepTo = null;
+		newStepName = '';
+	}
+
+	function cancelAddStep() {
+		addingStepTo = null;
+		newStepName = '';
+	}
+
+	function startModifyStep(stageKey: string, itemIndex: number, currentName: string) {
+		editingStep = { stageKey, itemIndex };
+		editStepName = currentName;
+	}
+
+	function confirmModifyStep() {
+		if (editingStep && editStepName.trim() && onModifyStep) {
+			onModifyStep(editingStep.stageKey, editingStep.itemIndex, editStepName.trim());
+		}
+		editingStep = null;
+		editStepName = '';
+	}
+
+	function cancelModifyStep() {
+		editingStep = null;
+		editStepName = '';
+	}
+
+	function handleDeleteStep(stageKey: string, itemIndex: number) {
+		confirmingDelete = { stageKey, itemIndex };
+	}
+
+	function confirmDeleteStep() {
+		if (confirmingDelete && onDeleteStep) {
+			onDeleteStep(confirmingDelete.stageKey, confirmingDelete.itemIndex);
+		}
+		confirmingDelete = null;
+	}
+
+	function cancelDeleteStep() {
+		confirmingDelete = null;
 	}
 
 	// Editable fields state
@@ -172,8 +256,9 @@
 			</button>
 		</div>
 		<div class="checklist-items">
-			{#each stage.checklist as item, i}
+			{#each getStepNames(stage.key) as item, i}
 				{@const checked = isItemChecked(expandedStage, i)}
+				{@const completedBy = getItemCompletedBy(expandedStage, i)}
 				<div class="checklist-item" class:checked style="animation-delay: {i * 50}ms">
 					<button 
 						class="check-box" 
@@ -188,18 +273,76 @@
 							</svg>
 						{/if}
 					</button>
-					<span class="check-text">{item}</span>
+					{#if editingStep?.stageKey === stage.key && editingStep?.itemIndex === i}
+						<div class="edit-step-field">
+							<input type="text" bind:value={editStepName} class="edit-step-input" />
+							<button class="edit-step-save" onclick={confirmModifyStep}>✓</button>
+							<button class="edit-step-cancel" onclick={cancelModifyStep}>✕</button>
+						</div>
+					{:else}
+						<span class="check-text">{item}</span>
+					{/if}
+					{#if checked && completedBy}
+						<span class="completed-by">Completed by {completedBy}</span>
+					{/if}
 					{#if canCheck}
 						<span class="check-hint">click to {checked ? 'uncheck' : 'check'}</span>
 					{/if}
+					{#if canManageSteps && editingStep?.stageKey !== stage.key}
+						<div class="step-actions">
+							<button class="step-action-btn modify" onclick={() => startModifyStep(stage.key, i, item)} title="Modify step">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+									<path d="M12 20h9"></path>
+									<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+								</svg>
+							</button>
+							{#if confirmingDelete?.stageKey === stage.key && confirmingDelete?.itemIndex === i}
+								<button class="step-action-btn confirm-delete" onclick={confirmDeleteStep} title="Confirm delete">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12">
+										<polyline points="20 6 9 17 4 12"></polyline>
+									</svg>
+								</button>
+								<button class="step-action-btn cancel-delete" onclick={cancelDeleteStep} title="Cancel">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+										<line x1="18" y1="6" x2="6" y2="18"></line>
+										<line x1="6" y1="6" x2="18" y2="18"></line>
+									</svg>
+								</button>
+							{:else}
+								<button class="step-action-btn delete" onclick={() => handleDeleteStep(stage.key, i)} title="Delete step">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+										<polyline points="3 6 5 6 21 6"></polyline>
+										<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+									</svg>
+								</button>
+							{/if}
+						</div>
+					{/if}
 				</div>
 			{/each}
+			{#if canManageSteps}
+				{#if addingStepTo === stage.key}
+					<div class="add-step-form">
+						<input type="text" bind:value={newStepName} placeholder="New step name..." class="add-step-input" />
+						<button class="add-step-confirm" onclick={() => confirmAddStep(stage.key)}>Add</button>
+						<button class="add-step-cancel" onclick={cancelAddStep}>Cancel</button>
+					</div>
+				{:else}
+					<button class="add-step-btn" onclick={() => startAddStep(stage.key)}>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<line x1="12" y1="5" x2="12" y2="19"></line>
+							<line x1="5" y1="12" x2="19" y2="12"></line>
+						</svg>
+						Add Step
+					</button>
+				{/if}
+			{/if}
 		</div>
 		<div class="checklist-progress">
 			<div class="checklist-bar">
-				<div class="checklist-fill" style="width: {(stage.checklist.filter((_, i) => isItemChecked(expandedStage ?? 0, i)).length / stage.checklist.length) * 100}%"></div>
+				<div class="checklist-fill" style="width: {(getStepNames(stage.key).filter((_, i) => isItemChecked(expandedStage ?? 0, i)).length / getStepNames(stage.key).length) * 100}%"></div>
 			</div>
-			<span class="checklist-count">{stage.checklist.filter((_, i) => isItemChecked(expandedStage ?? 0, i)).length}/{stage.checklist.length} complete</span>
+			<span class="checklist-count">{getStepNames(stage.key).filter((_, i) => isItemChecked(expandedStage ?? 0, i)).length}/{getStepNames(stage.key).length} complete</span>
 		</div>
 	</div>
 {/if}
@@ -472,6 +615,109 @@
 		margin-left: auto;
 	}
 	.checklist-item:hover .check-hint { opacity: 0.6; }
+	.completed-by {
+		font-size: 0.65rem;
+		color: var(--emerald-light);
+		font-weight: 500;
+		white-space: nowrap;
+		padding: 0.1rem 0.4rem;
+		background: rgba(95, 170, 123, 0.1);
+		border-radius: 4px;
+	}
+	.step-actions {
+		display: flex;
+		gap: 0.25rem;
+		margin-left: auto;
+		opacity: 0;
+		transition: opacity 0.2s;
+	}
+	.checklist-item:hover .step-actions { opacity: 1; }
+	.step-action-btn {
+		width: 22px;
+		height: 22px;
+		border-radius: 4px;
+		border: none;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s;
+	}
+	.step-action-btn.modify:hover { background: rgba(232, 151, 107, 0.15); color: var(--primary-light); }
+	.step-action-btn.delete:hover { background: rgba(220, 80, 80, 0.15); color: #e06060; }
+	.step-action-btn.confirm-delete { background: rgba(95, 170, 123, 0.15); color: var(--emerald); opacity: 1; }
+	.step-action-btn.confirm-delete:hover { background: rgba(95, 170, 123, 0.25); }
+	.step-action-btn.cancel-delete { background: rgba(220, 80, 80, 0.1); color: #e06060; opacity: 1; }
+	.step-action-btn.cancel-delete:hover { background: rgba(220, 80, 80, 0.2); }
+	.edit-step-field { display: flex; align-items: center; gap: 0.35rem; flex: 1; }
+	.edit-step-input {
+		background: rgba(255, 250, 245, 0.08);
+		border: 1px solid rgba(232, 151, 107, 0.3);
+		border-radius: 4px;
+		padding: 0.25rem 0.5rem;
+		color: var(--text-primary);
+		font-size: 0.88rem;
+		flex: 1;
+	}
+	.edit-step-input:focus { outline: none; border-color: var(--primary); }
+	.edit-step-save, .edit-step-cancel {
+		background: none; border: none; cursor: pointer; padding: 0.2rem; border-radius: 4px;
+		display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+	}
+	.edit-step-save { color: var(--emerald); }
+	.edit-step-save:hover { background: rgba(95, 170, 123, 0.15); }
+	.edit-step-cancel:hover { background: rgba(255, 250, 245, 0.08); }
+	.add-step-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.5rem 0.75rem;
+		border: 1px dashed rgba(232, 151, 107, 0.25);
+		background: transparent;
+		color: var(--primary-light);
+		font-size: 0.8rem;
+		font-weight: 500;
+		border-radius: var(--radius-xs);
+		cursor: pointer;
+		transition: all 0.2s;
+		font-family: inherit;
+		width: 100%;
+		justify-content: center;
+	}
+	.add-step-btn:hover { background: rgba(232, 151, 107, 0.06); border-color: rgba(232, 151, 107, 0.4); }
+	.add-step-form {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.5rem 0.75rem;
+	}
+	.add-step-input {
+		flex: 1;
+		background: rgba(255, 250, 245, 0.08);
+		border: 1px solid rgba(232, 151, 107, 0.3);
+		border-radius: 4px;
+		padding: 0.35rem 0.5rem;
+		color: var(--text-primary);
+		font-size: 0.85rem;
+		font-family: inherit;
+	}
+	.add-step-input:focus { outline: none; border-color: var(--primary); }
+	.add-step-confirm, .add-step-cancel {
+		padding: 0.3rem 0.6rem;
+		border: none;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		transition: all 0.2s;
+	}
+	.add-step-confirm { background: var(--emerald); color: white; }
+	.add-step-confirm:hover { background: #4a9b6d; }
+	.add-step-cancel { background: rgba(255, 250, 245, 0.08); color: var(--text-muted); }
+	.add-step-cancel:hover { background: rgba(255, 250, 245, 0.12); }
 	.checklist-progress {
 		display: flex; align-items: center; gap: 0.75rem; padding-top: 0.75rem;
 		border-top: 1px solid rgba(255, 250, 245, 0.05);

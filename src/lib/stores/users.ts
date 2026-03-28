@@ -1,7 +1,7 @@
-import { writable, type Writable, type Readable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
 
 // User roles enum
-export type UserRole = 'admin' | 'merch_manager' | 'client';
+export type UserRole = 'admin' | 'client';
 
 export interface User {
 	id: string;
@@ -12,18 +12,16 @@ export interface User {
 
 // Role permissions
 export const rolePermissions: Record<UserRole, string[]> = {
-	admin: ['edit_orders', 'check_items', 'view_all', 'sign_off', 'edit_goals'],
-	merch_manager: ['edit_orders', 'check_items', 'view_all', 'edit_goals'],
-	client: ['view_all', 'sign_off']
+	admin: ['edit_orders', 'check_items', 'view_all', 'sign_off', 'edit_goals', 'manage_steps'],
+	client: ['view_all', 'sign_off', 'check_items']
 };
 
 // Mock users for demonstration
 export const mockUsers: User[] = [
 	{ id: 'user-1', name: 'Admin User', role: 'admin', email: 'admin@company.com' },
-	{ id: 'user-2', name: 'Merch Manager', role: 'merch_manager', email: 'merch@company.com' },
-	{ id: 'user-3', name: 'Client - Sarah Johnson', role: 'client', email: 'sarah@client.com' },
-	{ id: 'user-4', name: 'Client - Emily Davis', role: 'client', email: 'emily@client.com' },
-	{ id: 'user-5', name: 'Client - Alex Rivera', role: 'client', email: 'alex@client.com' }
+	{ id: 'user-2', name: 'Client - Sarah Johnson', role: 'client', email: 'sarah@client.com' },
+	{ id: 'user-3', name: 'Client - Emily Davis', role: 'client', email: 'emily@client.com' },
+	{ id: 'user-4', name: 'Client - Alex Rivera', role: 'client', email: 'alex@client.com' }
 ];
 
 // Current user store

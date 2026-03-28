@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { theme } from '$lib/stores/theme';
+	import type { Theme } from '$lib/stores/theme';
 	import { onMount, onDestroy } from 'svelte';
 
 	let currentTheme = $state<Theme>('mountain');
