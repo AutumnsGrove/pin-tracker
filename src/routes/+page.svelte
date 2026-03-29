@@ -34,6 +34,15 @@
 		completedBy: string | null;
 	}
 
+	interface PhaseSignOff {
+		adminSigned: boolean;
+		clientSigned: boolean;
+		adminSignedBy: string | null;
+		clientSignedBy: string | null;
+		adminSignedAt: string | null;
+		clientSignedAt: string | null;
+	}
+
 	interface Order {
 		id: string;
 		customerName: string;
@@ -46,7 +55,9 @@
 		checkedItems: Record<string, CheckedItem[]>;
 		// Track step names per stage (mutable by admin)
 		stepNames: Record<string, string[]>;
-		// Sign-off status
+		// Per-phase sign-off tracking (both admin and client must sign to advance)
+		phaseSignOffs: Record<string, PhaseSignOff>;
+		// Final order sign-off (quality/shipped approval)
 		signedOff: boolean;
 		signedOffBy: string | null;
 		signedOffAt: string | null;
@@ -66,6 +77,22 @@
 
 	const C = (checked: boolean, by: string | null = null): CheckedItem => ({ checked, completedBy: checked ? (by || 'Admin User') : null });
 	const U = (): CheckedItem => ({ checked: false, completedBy: null });
+
+	const emptySignOff = (): PhaseSignOff => ({
+		adminSigned: false, clientSigned: false,
+		adminSignedBy: null, clientSignedBy: null,
+		adminSignedAt: null, clientSignedAt: null
+	});
+
+	function defaultPhaseSignOffs(): Record<string, PhaseSignOff> {
+		return { ordered: emptySignOff(), design: emptySignOff(), production: emptySignOff(), quality: emptySignOff(), shipped: emptySignOff() };
+	}
+
+	const signedOff = (): PhaseSignOff => ({
+		adminSigned: true, clientSigned: true,
+		adminSignedBy: 'Admin User', clientSignedBy: 'Client User',
+		adminSignedAt: '2024-03-15 10:00 AM', clientSignedAt: '2024-03-15 10:05 AM'
+	});
 
 	function emptyStage(): CheckedItem[] {
 		return [
@@ -112,6 +139,13 @@
 				shipped: [U(), U(), U(), U(), U()]
 			},
 			stepNames: defaultStepNamesForOrder(),
+			phaseSignOffs: {
+				ordered: signedOff(),
+				design: signedOff(),
+				production: emptySignOff(),
+				quality: emptySignOff(),
+				shipped: emptySignOff()
+			},
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -144,6 +178,13 @@
 				shipped: [U(), U(), U(), U(), U()]
 			},
 			stepNames: defaultStepNamesForOrder(),
+			phaseSignOffs: {
+				ordered: signedOff(),
+				design: emptySignOff(),
+				production: emptySignOff(),
+				quality: emptySignOff(),
+				shipped: emptySignOff()
+			},
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -171,6 +212,13 @@
 				shipped: [U(), U(), U(), U(), U()]
 			},
 			stepNames: defaultStepNamesForOrder(),
+			phaseSignOffs: {
+				ordered: signedOff(),
+				design: signedOff(),
+				production: signedOff(),
+				quality: emptySignOff(),
+				shipped: emptySignOff()
+			},
 			signedOff: true,
 			signedOffBy: 'Client - Emily Davis',
 			signedOffAt: '2024-03-17 3:00 PM',
@@ -201,6 +249,13 @@
 				shipped: [C(true), C(true), C(true), C(true), C(true)]
 			},
 			stepNames: defaultStepNamesForOrder(),
+			phaseSignOffs: {
+				ordered: signedOff(),
+				design: signedOff(),
+				production: signedOff(),
+				quality: signedOff(),
+				shipped: signedOff()
+			},
 			signedOff: true,
 			signedOffBy: 'Client - Alex Rivera',
 			signedOffAt: '2024-03-15 2:00 PM',
@@ -232,6 +287,7 @@
 				shipped: [U(), U(), U(), U(), U()]
 			},
 			stepNames: defaultStepNamesForOrder(),
+			phaseSignOffs: defaultPhaseSignOffs(),
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -282,37 +338,8 @@
 			...selectedOrder.auditTrail
 		];
 
-		// Auto-advance: if all items in the current stage are checked, move to next stage
-		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
-		if (checked && stageKey === selectedOrder.status && currentStageIdx < stageOrder.length - 1) {
-			const stageItems = selectedOrder.checkedItems[stageKey];
-			const allChecked = stageItems && stageItems.length > 0 && stageItems.every(item => item.checked);
-			if (allChecked) {
-				const nextStage = stageOrder[currentStageIdx + 1];
-				selectedOrder.status = nextStage;
-
-				// Add stage advancement to audit trail
-				selectedOrder.auditTrail = [
-					{
-						action: 'Stage Advanced',
-						details: `All items complete — moved to ${stageDisplayNames[nextStage]}`,
-						user: $currentUser?.name || 'Unknown User',
-						timestamp: new Date().toLocaleString()
-					},
-					...selectedOrder.auditTrail
-				];
-
-				// Add to activity timeline
-				selectedOrder.updates = [
-					...selectedOrder.updates,
-					{
-						status: stageDisplayNames[nextStage],
-						message: `All ${stageDisplayNames[stageKey]} tasks completed. Moving to ${stageDisplayNames[nextStage]}.`,
-						timestamp: new Date().toLocaleString()
-					}
-				];
-			}
-		}
+		// No auto-advance: phase requires both admin and client sign-off to proceed
+		// The sign-off UI is shown when all checks are complete (handled in PinTracker)
 
 		// Recalculate progress based on total checked items across all stages
 		let totalChecked = 0;
@@ -334,7 +361,146 @@
 		return selectedOrder.stepNames[stageKey]?.[itemIndex] || 'Unknown item';
 	}
 
-	function handleSignOff() {
+	function handlePhaseSignOff(stageKey: string) {
+		const role = $currentUser?.role;
+		const name = $currentUser?.name || 'Unknown User';
+		if (!selectedOrder.phaseSignOffs[stageKey]) {
+			selectedOrder.phaseSignOffs[stageKey] = emptySignOff();
+		}
+		const signOff = selectedOrder.phaseSignOffs[stageKey];
+		const now = new Date().toLocaleString();
+
+		if (role === 'admin') {
+			signOff.adminSigned = true;
+			signOff.adminSignedBy = name;
+			signOff.adminSignedAt = now;
+		} else if (role === 'client') {
+			signOff.clientSigned = true;
+			signOff.clientSignedBy = name;
+			signOff.clientSignedAt = now;
+		}
+
+		selectedOrder.auditTrail = [
+			{
+				action: 'Phase Sign Off',
+				details: `${stageDisplayNames[stageKey]} signed off by ${role}`,
+				user: name,
+				timestamp: now
+			},
+			...selectedOrder.auditTrail
+		];
+
+		// If both admin and client have signed, advance to next stage
+		if (signOff.adminSigned && signOff.clientSigned) {
+			const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
+			if (currentStageIdx < stageOrder.length - 1) {
+				const nextStage = stageOrder[currentStageIdx + 1];
+				selectedOrder.status = nextStage;
+
+				selectedOrder.auditTrail = [
+					{
+						action: 'Stage Advanced',
+						details: `Both parties signed off — moved to ${stageDisplayNames[nextStage]}`,
+						user: 'System',
+						timestamp: now
+					},
+					...selectedOrder.auditTrail
+				];
+
+				selectedOrder.updates = [
+					...selectedOrder.updates,
+					{
+						status: stageDisplayNames[nextStage],
+						message: `All ${stageDisplayNames[stageKey]} tasks completed and approved. Moving to ${stageDisplayNames[nextStage]}.`,
+						timestamp: now
+					}
+				];
+			}
+		}
+
+		orders = [...orders];
+	}
+
+	function handleAdvancePhase() {
+		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
+		if (currentStageIdx >= stageOrder.length - 1) return;
+
+		const nextStage = stageOrder[currentStageIdx + 1];
+		const name = $currentUser?.name || 'Unknown User';
+		const now = new Date().toLocaleString();
+
+		selectedOrder.status = nextStage;
+
+		selectedOrder.auditTrail = [
+			{
+				action: 'Stage Advanced (Forced)',
+				details: `Admin forced advance to ${stageDisplayNames[nextStage]}`,
+				user: name,
+				timestamp: now
+			},
+			...selectedOrder.auditTrail
+		];
+
+		selectedOrder.updates = [
+			...selectedOrder.updates,
+			{
+				status: stageDisplayNames[nextStage],
+				message: `Admin moved order to ${stageDisplayNames[nextStage]}.`,
+				timestamp: now
+			}
+		];
+
+		orders = [...orders];
+	}
+
+	function handleReversePhase() {
+		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
+		if (currentStageIdx <= 0) return;
+
+		const prevStage = stageOrder[currentStageIdx - 1];
+		const name = $currentUser?.name || 'Unknown User';
+		const now = new Date().toLocaleString();
+
+		// Reset sign-offs for the previous stage so it requires re-approval
+		selectedOrder.phaseSignOffs[prevStage] = emptySignOff();
+
+		selectedOrder.status = prevStage;
+
+		selectedOrder.auditTrail = [
+			{
+				action: 'Stage Reversed (Forced)',
+				details: `Admin reversed back to ${stageDisplayNames[prevStage]}`,
+				user: name,
+				timestamp: now
+			},
+			...selectedOrder.auditTrail
+		];
+
+		selectedOrder.updates = [
+			...selectedOrder.updates,
+			{
+				status: stageDisplayNames[prevStage],
+				message: `Admin moved order back to ${stageDisplayNames[prevStage]}. Sign-offs reset.`,
+				timestamp: now
+			}
+		];
+
+		// Recalculate progress
+		let totalChecked = 0;
+		let totalItems = 0;
+		for (const stage of stageOrder) {
+			const items = selectedOrder.checkedItems[stage];
+			if (items) {
+				totalChecked += items.filter(item => item.checked).length;
+				totalItems += items.length;
+			}
+		}
+		selectedOrder.progress = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+
+		orders = [...orders];
+	}
+
+	function handleFinalSignOff() {
 		selectedOrder.signedOff = true;
 		selectedOrder.signedOffBy = $currentUser?.name || 'Unknown User';
 		selectedOrder.signedOffAt = new Date().toLocaleString();
@@ -342,8 +508,8 @@
 		// Add to audit trail
 		selectedOrder.auditTrail = [
 			{
-				action: 'Sign Off',
-				details: 'Order signed off by client',
+				action: 'Final Sign Off',
+				details: 'Order approved',
 				user: $currentUser?.name || 'Unknown User',
 				timestamp: new Date().toLocaleString()
 			},
@@ -502,6 +668,7 @@
 				shipped: emptyStage()
 			},
 			stepNames: defaultStepNamesForOrder(),
+			phaseSignOffs: defaultPhaseSignOffs(),
 			signedOff: false,
 			signedOffBy: null,
 			signedOffAt: null,
@@ -631,7 +798,10 @@
 			<PinTracker 
 				{selectedOrder} 
 				onCheckItem={handleCheckItem}
-				onSignOff={handleSignOff}
+				onPhaseSignOff={handlePhaseSignOff}
+				onAdvancePhase={handleAdvancePhase}
+				onReversePhase={handleReversePhase}
+				onFinalSignOff={handleFinalSignOff}
 				onEditGoal={handleEditGoal}
 				onAddStep={handleAddStep}
 				onDeleteStep={handleDeleteStep}
@@ -640,6 +810,7 @@
 				canSignOff={userCanSignOff}
 				canEditGoals={userCanEditGoals}
 				canManageSteps={userCanManageSteps}
+				isAdmin={$currentUser?.role === 'admin'}
 				currentUserRole={$currentUser?.role || ''}
 				currentUserName={$currentUser?.name || ''}
 			/>

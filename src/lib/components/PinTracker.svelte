@@ -6,6 +6,15 @@
 		completedBy: string | null;
 	}
 
+	interface PhaseSignOff {
+		adminSigned: boolean;
+		clientSigned: boolean;
+		adminSignedBy: string | null;
+		clientSignedBy: string | null;
+		adminSignedAt: string | null;
+		clientSignedAt: string | null;
+	}
+
 	interface Props {
 		selectedOrder: {
 			id: string;
@@ -17,6 +26,7 @@
 			progress: number;
 			checkedItems: Record<string, CheckedItem[]>;
 			stepNames: Record<string, string[]>;
+			phaseSignOffs: Record<string, PhaseSignOff>;
 			signedOff: boolean;
 			signedOffBy: string | null;
 			signedOffAt: string | null;
@@ -33,7 +43,10 @@
 			}[];
 		};
 		onCheckItem?: (stageKey: string, itemIndex: number, checked: boolean) => void;
-		onSignOff?: () => void;
+		onPhaseSignOff?: (stageKey: string) => void;
+		onAdvancePhase?: () => void;
+		onReversePhase?: () => void;
+		onFinalSignOff?: () => void;
 		onEditGoal?: (field: string, value: string | number) => void;
 		onAddStep?: (stageKey: string, stepName: string) => void;
 		onDeleteStep?: (stageKey: string, itemIndex: number) => void;
@@ -42,6 +55,7 @@
 		canSignOff?: boolean;
 		canEditGoals?: boolean;
 		canManageSteps?: boolean;
+		isAdmin?: boolean;
 		currentUserRole?: string;
 		currentUserName?: string;
 	}
@@ -49,7 +63,10 @@
 	let { 
 		selectedOrder, 
 		onCheckItem, 
-		onSignOff, 
+		onPhaseSignOff,
+		onAdvancePhase,
+		onReversePhase,
+		onFinalSignOff,
 		onEditGoal,
 		onAddStep,
 		onDeleteStep,
@@ -58,6 +75,7 @@
 		canSignOff = false, 
 		canEditGoals = false,
 		canManageSteps = false,
+		isAdmin = false,
 		currentUserRole = '',
 		currentUserName = ''
 	}: Props = $props();
@@ -105,6 +123,31 @@
 		if (canCheck && onCheckItem) {
 			onCheckItem(stageKey, itemIndex, !currentChecked);
 		}
+	}
+
+	function getPhaseSignOff(stageKey: string): PhaseSignOff {
+		return selectedOrder.phaseSignOffs[stageKey] || {
+			adminSigned: false, clientSigned: false,
+			adminSignedBy: null, clientSignedBy: null,
+			adminSignedAt: null, clientSignedAt: null
+		};
+	}
+
+	function areAllItemsChecked(stageKey: string): boolean {
+		const items = selectedOrder.checkedItems[stageKey];
+		return items && items.length > 0 && items.every(item => item.checked);
+	}
+
+	function hasCurrentUserSignedOff(stageKey: string): boolean {
+		const signOff = getPhaseSignOff(stageKey);
+		if (currentUserRole === 'admin') return signOff.adminSigned;
+		if (currentUserRole === 'client') return signOff.clientSigned;
+		return false;
+	}
+
+	function canPhaseAdvance(stageKey: string): boolean {
+		const signOff = getPhaseSignOff(stageKey);
+		return signOff.adminSigned && signOff.clientSigned;
 	}
 
 	// Step management state
@@ -421,7 +464,86 @@
 	</div>
 </div>
 
-<!-- ===== SIGN-OFF SECTION ===== -->
+<!-- ===== PHASE SIGN-OFF SECTION ===== -->
+
+<!-- Show phase sign-off panel when all items are checked and phase hasn't been fully signed off -->
+{#if areAllItemsChecked(selectedOrder.status) && !canPhaseAdvance(selectedOrder.status) && currentStageIndex < stages.length - 1}
+	{@const currentSignOff = getPhaseSignOff(selectedOrder.status)}
+	<div class="signoff-section phase-signoff">
+		<div class="signoff-header">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+				<path d="M9 12l2 2 4-4"></path>
+				<path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+			</svg>
+			<span>All items complete — sign-off required to proceed</span>
+		</div>
+		<div class="signoff-status-row">
+			<div class="signoff-party" class:signed={currentSignOff.adminSigned}>
+				<span class="party-label">Admin</span>
+				{#if currentSignOff.adminSigned}
+					<span class="party-badge signed">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12">
+							<polyline points="20 6 9 17 4 12"></polyline>
+						</svg>
+						Signed by {currentSignOff.adminSignedBy}
+					</span>
+				{:else}
+					<span class="party-badge pending">Pending</span>
+				{/if}
+			</div>
+			<div class="signoff-party" class:signed={currentSignOff.clientSigned}>
+				<span class="party-label">Client</span>
+				{#if currentSignOff.clientSigned}
+					<span class="party-badge signed">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12">
+							<polyline points="20 6 9 17 4 12"></polyline>
+						</svg>
+						Signed by {currentSignOff.clientSignedBy}
+					</span>
+				{:else}
+					<span class="party-badge pending">Pending</span>
+				{/if}
+			</div>
+		</div>
+		{#if canSignOff && !hasCurrentUserSignedOff(selectedOrder.status)}
+			<button class="signoff-button" onclick={() => onPhaseSignOff?.(selectedOrder.status)}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+					<path d="M12 20h9"></path>
+					<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+				</svg>
+				Sign Off This Phase
+			</button>
+		{/if}
+	</div>
+{/if}
+
+<!-- Admin navigation controls -->
+{#if isAdmin}
+	<div class="admin-nav">
+		{#if currentStageIndex > 0}
+			<button class="admin-nav-btn reverse" onclick={onReversePhase}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+				Previous Phase
+			</button>
+		{:else}
+			<div></div>
+		{/if}
+		{#if currentStageIndex < stages.length - 1}
+			<button class="admin-nav-btn advance" onclick={onAdvancePhase}>
+				Next Phase
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+					<polyline points="9 18 15 12 9 6"></polyline>
+				</svg>
+			</button>
+		{:else}
+			<div></div>
+		{/if}
+	</div>
+{/if}
+
+<!-- ===== FINAL ORDER SIGN-OFF (quality/shipped) ===== -->
 {#if selectedOrder.status === 'quality' || selectedOrder.status === 'shipped'}
 	<div class="signoff-section">
 		{#if selectedOrder.signedOff}
@@ -434,7 +556,7 @@
 				<span class="signoff-time">on {selectedOrder.signedOffAt}</span>
 			</div>
 		{:else if canSignOff}
-			<button class="signoff-button" onclick={onSignOff}>
+			<button class="signoff-button final" onclick={onFinalSignOff}>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
 					<path d="M12 20h9"></path>
 					<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
@@ -833,6 +955,119 @@
 		color: var(--text-muted);
 		font-weight: 300;
 		margin-left: auto;
+	}
+
+	/* ===== PHASE SIGN-OFF PANEL ===== */
+	.phase-signoff {
+		background: rgba(232, 151, 107, 0.06);
+		border: 1px solid rgba(232, 151, 107, 0.15);
+		border-radius: var(--radius);
+		padding: 1.25rem;
+	}
+	.signoff-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+		color: var(--primary-light);
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+	.signoff-header svg { flex-shrink: 0; }
+	.signoff-status-row {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+	.signoff-party {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		padding: 0.6rem 0.75rem;
+		background: rgba(255, 250, 245, 0.03);
+		border: 1px solid rgba(255, 250, 245, 0.06);
+		border-radius: var(--radius-xs);
+	}
+	.signoff-party.signed {
+		background: rgba(95, 170, 123, 0.06);
+		border-color: rgba(95, 170, 123, 0.15);
+	}
+	.party-label {
+		font-size: 0.65rem;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		font-weight: 600;
+	}
+	.party-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.78rem;
+		font-weight: 500;
+	}
+	.party-badge.signed {
+		color: var(--emerald-light);
+	}
+	.party-badge.signed svg { color: var(--emerald); flex-shrink: 0; }
+	.party-badge.pending {
+		color: var(--text-muted);
+		font-style: italic;
+	}
+	.signoff-button.final {
+		background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+		box-shadow: 0 4px 15px rgba(232, 151, 107, 0.25);
+	}
+	.signoff-button.final:hover {
+		box-shadow: 0 6px 20px rgba(232, 151, 107, 0.35);
+	}
+
+	/* ===== ADMIN NAVIGATION ===== */
+	.admin-nav {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.75rem;
+		margin: 1rem 0;
+	}
+	.admin-nav-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.55rem 1rem;
+		border: 1px solid rgba(255, 250, 245, 0.1);
+		border-radius: var(--radius-xs);
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-family: inherit;
+		background: rgba(255, 250, 245, 0.04);
+		color: var(--text-secondary);
+	}
+	.admin-nav-btn:hover {
+		background: rgba(255, 250, 245, 0.08);
+		border-color: rgba(255, 250, 245, 0.18);
+		color: var(--text-primary);
+	}
+	.admin-nav-btn.advance {
+		background: rgba(232, 151, 107, 0.1);
+		border-color: rgba(232, 151, 107, 0.25);
+		color: var(--primary-light);
+	}
+	.admin-nav-btn.advance:hover {
+		background: rgba(232, 151, 107, 0.18);
+		border-color: rgba(232, 151, 107, 0.4);
+	}
+	.admin-nav-btn.reverse {
+		background: rgba(220, 80, 80, 0.08);
+		border-color: rgba(220, 80, 80, 0.2);
+		color: #e07070;
+	}
+	.admin-nav-btn.reverse:hover {
+		background: rgba(220, 80, 80, 0.15);
+		border-color: rgba(220, 80, 80, 0.35);
 	}
 
 	/* ===== AUDIT TRAIL ===== */
