@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { productTypeLabels, type ProductType } from './stages';
+
 	interface Props {
 		isOpen?: boolean;
 		onClose?: () => void;
@@ -8,6 +10,7 @@
 			quantity: number;
 			estimatedCompletion: string;
 			notes: string;
+			productType: ProductType;
 		}) => void;
 	}
 
@@ -20,6 +23,7 @@
 	let quantity = $state(100);
 	let estimatedCompletion = $state('');
 	let notes = $state('');
+	let productType = $state<ProductType>('pins');
 
 	// Validation
 	let errors = $state<Record<string, string>>({});
@@ -62,7 +66,8 @@
 				pinDesign: pinDesign.trim(),
 				quantity,
 				estimatedCompletion: estimatedCompletion || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-				notes: notes.trim()
+				notes: notes.trim(),
+				productType
 			});
 			resetForm();
 		}
@@ -75,6 +80,7 @@
 		quantity = 100;
 		estimatedCompletion = '';
 		notes = '';
+		productType = 'pins';
 		errors = {};
 	}
 
@@ -128,6 +134,21 @@
 						<p class="step-description">Who is this order for?</p>
 						
 						<div class="form-group">
+							<label>Product Type *</label>
+							<div class="product-type-selector">
+								{#each Object.entries(productTypeLabels) as [type, label]}
+									<button
+										class="product-type-btn"
+										class:active={productType === type}
+										onclick={() => productType = type as ProductType}
+									>
+										{label}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						<div class="form-group">
 							<label for="customerName">Customer Name *</label>
 							<input 
 								type="text" 
@@ -167,14 +188,14 @@
 				{:else if step === 2}
 					<div class="wizard-step" style="animation: fadeIn 0.3s ease">
 						<h3>Tell us about the design</h3>
-						<p class="step-description">Describe the pin or enamel product you want</p>
+						<p class="step-description">Describe the product design you want</p>
 						
 						<div class="form-group">
 							<label for="pinDesign">Design Description / Idea *</label>
 							<textarea 
 								id="pinDesign"
 								bind:value={pinDesign}
-								placeholder="Describe your pin design idea - colors, style, any reference to artwork, size, etc."
+								placeholder="Describe your design idea - colors, style, any reference to artwork, size, etc."
 								rows="5"
 								class:error={errors.pinDesign}
 							></textarea>
@@ -200,12 +221,16 @@
 						
 						<div class="review-card">
 							<div class="review-item">
+								<span class="review-label">Product Type</span>
+								<span class="review-value">{productTypeLabels[productType]}</span>
+							</div>
+							<div class="review-item">
 								<span class="review-label">Customer</span>
 								<span class="review-value">{customerName}</span>
 							</div>
 							<div class="review-item">
 								<span class="review-label">Quantity</span>
-								<span class="review-value">{quantity} pins</span>
+								<span class="review-value">{quantity} units</span>
 							</div>
 							<div class="review-item">
 								<span class="review-label">Target Date</span>
@@ -456,6 +481,38 @@
 	.form-group textarea {
 		resize: vertical;
 		min-height: 80px;
+	}
+
+	.product-type-selector {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.product-type-btn {
+		flex: 1;
+		padding: 0.65rem 0.75rem;
+		background: rgba(255, 250, 245, 0.04);
+		border: 1px solid rgba(255, 250, 245, 0.1);
+		border-radius: 8px;
+		color: var(--text-muted, #888);
+		font-size: 0.82rem;
+		font-weight: 600;
+		font-family: inherit;
+		cursor: pointer;
+		transition: all 0.2s;
+		text-align: center;
+	}
+
+	.product-type-btn:hover {
+		background: rgba(255, 250, 245, 0.08);
+		border-color: rgba(255, 250, 245, 0.18);
+		color: var(--text-secondary, #ccc);
+	}
+
+	.product-type-btn.active {
+		background: rgba(232, 151, 107, 0.12);
+		border-color: rgba(232, 151, 107, 0.4);
+		color: var(--primary-light, #f0b090);
 	}
 
 	.error-message {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { orderStages } from './stages';
+	import type { Stage } from './stages';
 
 	interface CheckedItem {
 		checked: boolean;
@@ -21,7 +21,7 @@
 			customerName: string;
 			pinDesign: string;
 			quantity: number;
-			status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
+			status: string;
 			estimatedCompletion: string;
 			progress: number;
 			checkedItems: Record<string, CheckedItem[]>;
@@ -51,6 +51,7 @@
 		onAddStep?: (stageKey: string, stepName: string) => void;
 		onDeleteStep?: (stageKey: string, itemIndex: number) => void;
 		onModifyStep?: (stageKey: string, itemIndex: number, newName: string) => void;
+		stages?: Stage[];
 		canCheck?: boolean;
 		canSignOff?: boolean;
 		canEditGoals?: boolean;
@@ -71,6 +72,7 @@
 		onAddStep,
 		onDeleteStep,
 		onModifyStep,
+		stages = [],
 		canCheck = false, 
 		canSignOff = false, 
 		canEditGoals = false,
@@ -80,7 +82,6 @@
 		currentUserName = ''
 	}: Props = $props();
 
-	const stages = orderStages;
 	let currentStageIndex = $derived(stages.findIndex((s) => s.key === selectedOrder.status));
 
 	function getStepNames(stageKey: string): string[] {
@@ -442,7 +443,7 @@
 			</div>
 		{:else}
 			<span class="info-value" class:editable={canEditGoals} onclick={() => startEdit('quantity', selectedOrder.quantity)}>
-				{selectedOrder.quantity} pins
+				{selectedOrder.quantity} units
 				{#if canEditGoals}<span class="edit-icon">✎</span>{/if}
 			</span>
 		{/if}

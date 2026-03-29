@@ -5,6 +5,7 @@
 	import type { Theme } from '$lib/stores/theme';
 	import { currentUser, mockUsers, hasPermission, type UserRole } from '$lib/stores/users';
 	import NewOrderWizard from '$lib/components/NewOrderWizard.svelte';
+	import { productStages, stageKeysByProduct, stageDisplayNames, type ProductType, type Stage } from '$lib/components/stages';
 
 	let currentTheme = $state<Theme>('mountain');
 
@@ -48,7 +49,8 @@
 		customerName: string;
 		pinDesign: string;
 		quantity: number;
-		status: 'ordered' | 'design' | 'production' | 'quality' | 'shipped';
+		productType: ProductType;
+		status: string;
 		estimatedCompletion: string;
 		progress: number;
 		// Track which checklist items are checked per stage, and who completed them
@@ -124,10 +126,11 @@
 
 	let orders: Order[] = $state([
 		{
-			id: 'PIN-2024-001',
+			id: 'PIN-2026-001',
 			customerName: 'Sarah Johnson',
 			pinDesign: 'Golden Retriever',
 			quantity: 5,
+			productType: 'pins',
 			status: 'production',
 			estimatedCompletion: '2024-03-20',
 			progress: 60,
@@ -163,10 +166,11 @@
 			]
 		},
 		{
-			id: 'PIN-2024-002',
+			id: 'AS-2026-001',
 			customerName: 'Mike Chen',
 			pinDesign: 'Space Rocket',
 			quantity: 10,
+			productType: 'acrylic',
 			status: 'design',
 			estimatedCompletion: '2024-03-22',
 			progress: 25,
@@ -197,10 +201,11 @@
 			]
 		},
 		{
-			id: 'PIN-2024-003',
+			id: 'AC-2026-001',
 			customerName: 'Emily Davis',
 			pinDesign: 'Cat with Crown',
 			quantity: 3,
+			productType: 'charms',
 			status: 'quality',
 			estimatedCompletion: '2024-03-18',
 			progress: 90,
@@ -234,10 +239,11 @@
 			]
 		},
 		{
-			id: 'PIN-2024-004',
+			id: 'PIN-2026-002',
 			customerName: 'Alex Rivera',
 			pinDesign: 'Vintage Camera',
 			quantity: 2,
+			productType: 'pins',
 			status: 'shipped',
 			estimatedCompletion: '2024-03-17',
 			progress: 100,
@@ -272,10 +278,11 @@
 			]
 		},
 		{
-			id: 'PIN-2024-005',
+			id: 'PIN-2026-003',
 			customerName: 'Jordan Kim',
 			pinDesign: 'Mountain Landscape',
 			quantity: 8,
+			productType: 'pins',
 			status: 'ordered',
 			estimatedCompletion: '2024-03-25',
 			progress: 5,
@@ -306,14 +313,21 @@
 		selectedOrder = order;
 	}
 
-	const stageOrder: Array<'ordered' | 'design' | 'production' | 'quality' | 'shipped'> = ['ordered', 'design', 'production', 'quality', 'shipped'];
-	const stageDisplayNames: Record<string, string> = {
-		ordered: 'Order Received',
-		design: 'Design Phase',
-		production: 'In Production',
-		quality: 'Quality Check',
-		shipped: 'Shipped!'
-	};
+	function getStageOrder(productType: ProductType): string[] {
+		return stageKeysByProduct[productType] || stageKeysByProduct.pins;
+	}
+
+	function getStageDisplayNames(productType: ProductType): Record<string, string> {
+		return stageDisplayNames[productType] || stageDisplayNames.pins;
+	}
+
+	function getCurrentStages(productType: ProductType): Stage[] {
+		return productStages[productType] || productStages.pins;
+	}
+
+	let currentStageOrder = $derived(getStageOrder(selectedOrder.productType || 'pins'));
+	let currentDisplayNames = $derived(getStageDisplayNames(selectedOrder.productType || 'pins'));
+	let currentStages = $derived(getCurrentStages(selectedOrder.productType || 'pins'));
 
 	function handleCheckItem(stageKey: string, itemIndex: number, checked: boolean) {
 		// Update the checkedItems array
@@ -344,7 +358,7 @@
 		// Recalculate progress based on total checked items across all stages
 		let totalChecked = 0;
 		let totalItems = 0;
-		for (const stage of stageOrder) {
+		for (const stage of currentStageOrder) {
 			const items = selectedOrder.checkedItems[stage];
 			if (items) {
 				totalChecked += items.filter(item => item.checked).length;
@@ -383,7 +397,7 @@
 		selectedOrder.auditTrail = [
 			{
 				action: 'Phase Sign Off',
-				details: `${stageDisplayNames[stageKey]} signed off by ${role}`,
+				details: `${currentDisplayNames[stageKey]} signed off by ${role}`,
 				user: name,
 				timestamp: now
 			},
@@ -392,15 +406,15 @@
 
 		// If both admin and client have signed, advance to next stage
 		if (signOff.adminSigned && signOff.clientSigned) {
-			const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
-			if (currentStageIdx < stageOrder.length - 1) {
-				const nextStage = stageOrder[currentStageIdx + 1];
+			const currentStageIdx = currentStageOrder.indexOf(selectedOrder.status as typeof currentStageOrder[number]);
+			if (currentStageIdx < currentStageOrder.length - 1) {
+				const nextStage = currentStageOrder[currentStageIdx + 1] as typeof selectedOrder.status;
 				selectedOrder.status = nextStage;
 
 				selectedOrder.auditTrail = [
 					{
 						action: 'Stage Advanced',
-						details: `Both parties signed off — moved to ${stageDisplayNames[nextStage]}`,
+						details: `Both parties signed off — moved to ${currentDisplayNames[nextStage]}`,
 						user: 'System',
 						timestamp: now
 					},
@@ -410,8 +424,8 @@
 				selectedOrder.updates = [
 					...selectedOrder.updates,
 					{
-						status: stageDisplayNames[nextStage],
-						message: `All ${stageDisplayNames[stageKey]} tasks completed and approved. Moving to ${stageDisplayNames[nextStage]}.`,
+						status: currentDisplayNames[nextStage],
+						message: `All ${currentDisplayNames[stageKey]} tasks completed and approved. Moving to ${currentDisplayNames[nextStage]}.`,
 						timestamp: now
 					}
 				];
@@ -422,10 +436,10 @@
 	}
 
 	function handleAdvancePhase() {
-		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
-		if (currentStageIdx >= stageOrder.length - 1) return;
+		const currentStageIdx = currentStageOrder.indexOf(selectedOrder.status as typeof currentStageOrder[number]);
+		if (currentStageIdx >= currentStageOrder.length - 1) return;
 
-		const nextStage = stageOrder[currentStageIdx + 1];
+		const nextStage = currentStageOrder[currentStageIdx + 1] as typeof selectedOrder.status;
 		const name = $currentUser?.name || 'Unknown User';
 		const now = new Date().toLocaleString();
 
@@ -434,7 +448,7 @@
 		selectedOrder.auditTrail = [
 			{
 				action: 'Stage Advanced (Forced)',
-				details: `Admin forced advance to ${stageDisplayNames[nextStage]}`,
+				details: `Admin forced advance to ${currentDisplayNames[nextStage]}`,
 				user: name,
 				timestamp: now
 			},
@@ -444,8 +458,8 @@
 		selectedOrder.updates = [
 			...selectedOrder.updates,
 			{
-				status: stageDisplayNames[nextStage],
-				message: `Admin moved order to ${stageDisplayNames[nextStage]}.`,
+				status: currentDisplayNames[nextStage],
+				message: `Admin moved order to ${currentDisplayNames[nextStage]}.`,
 				timestamp: now
 			}
 		];
@@ -454,10 +468,10 @@
 	}
 
 	function handleReversePhase() {
-		const currentStageIdx = stageOrder.indexOf(selectedOrder.status as typeof stageOrder[number]);
+		const currentStageIdx = currentStageOrder.indexOf(selectedOrder.status as typeof currentStageOrder[number]);
 		if (currentStageIdx <= 0) return;
 
-		const prevStage = stageOrder[currentStageIdx - 1];
+		const prevStage = currentStageOrder[currentStageIdx - 1] as typeof selectedOrder.status;
 		const name = $currentUser?.name || 'Unknown User';
 		const now = new Date().toLocaleString();
 
@@ -469,7 +483,7 @@
 		selectedOrder.auditTrail = [
 			{
 				action: 'Stage Reversed (Forced)',
-				details: `Admin reversed back to ${stageDisplayNames[prevStage]}`,
+				details: `Admin reversed back to ${currentDisplayNames[prevStage]}`,
 				user: name,
 				timestamp: now
 			},
@@ -479,8 +493,8 @@
 		selectedOrder.updates = [
 			...selectedOrder.updates,
 			{
-				status: stageDisplayNames[prevStage],
-				message: `Admin moved order back to ${stageDisplayNames[prevStage]}. Sign-offs reset.`,
+				status: currentDisplayNames[prevStage],
+				message: `Admin moved order back to ${currentDisplayNames[prevStage]}. Sign-offs reset.`,
 				timestamp: now
 			}
 		];
@@ -488,7 +502,7 @@
 		// Recalculate progress
 		let totalChecked = 0;
 		let totalItems = 0;
-		for (const stage of stageOrder) {
+		for (const stage of currentStageOrder) {
 			const items = selectedOrder.checkedItems[stage];
 			if (items) {
 				totalChecked += items.filter(item => item.checked).length;
@@ -596,7 +610,7 @@
 		// Recalculate progress
 		let totalChecked = 0;
 		let totalItems = 0;
-		for (const stage of stageOrder) {
+		for (const stage of currentStageOrder) {
 			const items = selectedOrder.checkedItems[stage];
 			if (items) {
 				totalChecked += items.filter(item => item.checked).length;
@@ -651,12 +665,17 @@
 		quantity: number;
 		estimatedCompletion: string;
 		notes: string;
+		productType: ProductType;
 	}) {
+		const prefixMap: Record<ProductType, string> = { pins: 'PIN', acrylic: 'AS', charms: 'AC' };
+		const prefix = prefixMap[orderData.productType] || 'PIN';
+		const existingOfType = orders.filter(o => o.id.startsWith(prefix)).length;
 		const newOrder: Order = {
-			id: `PIN-2024-00${orders.length + 1}`,
+			id: `${prefix}-2026-${String(existingOfType + 1).padStart(3, '0')}`,
 			customerName: orderData.customerName,
 			pinDesign: orderData.pinDesign,
 			quantity: orderData.quantity,
+			productType: orderData.productType,
 			status: 'ordered',
 			estimatedCompletion: orderData.estimatedCompletion,
 			progress: 5,
@@ -734,7 +753,7 @@
 <div class="container">
 	<header>
 		<div class="header-top">
-			<div class="header-badge">PIN PRODUCTION TRACKER</div>
+			<div class="header-badge">MERCH PRODUCTION TRACKER</div>
 			<!-- Role Selector -->
 			<div class="role-selector">
 				<span class="role-label">Viewing as:</span>
@@ -763,7 +782,7 @@
 				</div>
 			</div>
 		</div>
-		<h1>Pin Tracker</h1>
+		<h1>Merch Tracker</h1>
 	</header>
 
 	<!-- Order selector tabs -->
@@ -796,7 +815,8 @@
 	<div class="tracker-panel">
 		{#key selectedOrder.id}
 			<PinTracker 
-				{selectedOrder} 
+				{selectedOrder}
+				stages={currentStages}
 				onCheckItem={handleCheckItem}
 				onPhaseSignOff={handlePhaseSignOff}
 				onAdvancePhase={handleAdvancePhase}
